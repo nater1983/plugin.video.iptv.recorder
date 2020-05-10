@@ -5,6 +5,7 @@ from kodi_six import xbmc, xbmcgui, xbmcaddon, xbmcvfs
 import requests
 import base64
 import time, datetime
+import traceback
 
 servicing = False
 
@@ -21,8 +22,6 @@ def Service():
 if __name__ == '__main__':
     #TODO enable Web Server, startServer does not enable it
     ADDON = xbmcaddon.Addon('plugin.video.iptv.recorder')
-
-    xbmc.executebuiltin('XBMC.RunPlugin(plugin://plugin.video.iptv.recorder/renew_jobs)')
 
     version = ADDON.getAddonInfo('version')
     if ADDON.getSetting('version') != version:
@@ -78,10 +77,13 @@ if __name__ == '__main__':
                     break
 
                 xbmc.log("[plugin.video.iptv.recorder] Service now triggered...")
+
+                xbmc.executebuiltin('XBMC.RunPlugin(plugin://plugin.video.iptv.recorder/renew_jobs)')
+
                 Service()
                 now = time.time()
                 ADDON.setSetting('last.update', str(now))
 
     except:
-        pass
+        xbmc.log(traceback.format_exc())
 
