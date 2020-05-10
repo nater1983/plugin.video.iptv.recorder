@@ -3322,84 +3322,6 @@ def select_groups():
     if xbmcgui.Dialog().yesno("IPTV Recorder","Reload xmltv data now?"):
         full_service()
 
-
-@plugin.route('/estuary')
-def estuary():
-    xbmc.startServer(xbmc.SERVER_WEBSERVER, True,True)
-    try:
-        xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Settings.SetSettingValue","id":1,"params":{"setting":"lookandfeel.skin","value":"skin.estouchy"}}')
-    except:
-        xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Settings.SetSettingValue","id":1,"params":{"setting":"lookandfeel.skin","value":"skin.confluence"}}')
-    xbmc.executebuiltin( 'XBMC.ReloadSkin()' )
-
-    from_path = xbmc.translatePath('special://xbmc/addons/skin.estuary')
-    to_path = xbmc.translatePath('special://home/addons/skin.estuary.iptv.recorder')
-    #log((from_path,to_path))
-    if os.path.exists(to_path):
-        #TODO warning
-        shutil.rmtree(to_path)
-        time.sleep(1)
-    shutil.copytree(from_path, to_path)
-
-    filename = xbmc.translatePath('special://home/addons/skin.estuary.iptv.recorder/addon.xml')
-    with open(filename,'r') as f:
-        text = f.read().decode('utf-8')
-    text = text.replace('skin.estuary','skin.estuary.iptv.recorder').replace('Estuary','Estuary (IPTV Recorder)')
-    with open(filename,'w') as f:
-        write_in_file(f, text)
-
-    files = glob.glob(os.path.join(to_path,'language','*','*.po'))
-    for filename in files:
-        with open(filename,'r') as f:
-            text = f.read().decode('utf-8')
-        text = text.replace('skin.estuary','skin.estuary.iptv.recorder')
-        with open(filename,'w') as f:
-            write_in_file(f, text)
-
-    filename = xbmc.translatePath('special://home/addons/skin.estuary.iptv.recorder/xml/DialogPVRInfo.xml')
-    with open(filename,'r') as f:
-        text = f.read().decode('utf-8')
-    text = text.replace('<control type="grouplist" id="9000">',
-    '''<control type="grouplist" id="9000">
-					<include content="InfoDialogButton">
-						<param name="width" value="275" />
-						<param name="id" value="666" />
-						<param name="icon" value="icons/infodialogs/record.png" />
-						<param name="label" value="IPTV Recorder" />
-						<param name="onclick_1" value="Action(close)" />
-						<param name="onclick_2" value="RunScript(plugin.video.iptv.recorder,$ESCINFO[ListItem.ChannelName],$ESCINFO[ListItem.Title],$ESCINFO[ListItem.Date],$ESCINFO[ListItem.Duration],$ESCINFO[ListItem.Plot])" />
-						<param name="visible" value="System.hasAddon(plugin.video.iptv.recorder)" />
-					</include>
-					<include content="InfoDialogButton">
-						<param name="width" value="275" />
-						<param name="id" value="667" />
-						<param name="icon" value="icons/infodialogs/record.png" />
-						<param name="label" value="Recordings" />
-						<param name="onclick_1" value="Action(close)" />
-						<param name="onclick_2" value="ActivateWindow(10025,&quot;plugin://plugin.video.iptv.recorder/recordings&quot;,return)" />
-						<param name="visible" value="System.hasAddon(plugin.video.iptv.recorder)" />
-					</include>''')
-    with open(filename,'w') as f:
-        write_in_file(f, text)
-
-    xbmc.executebuiltin("UpdateLocalAddons")
-    time.sleep(1)
-
-    try:
-        params = '"method":"Addons.SetAddonEnabled","params":{"addonid":"skin.estuary.iptv.recorder","enabled":true}'
-        xbmc.executeJSONRPC('{"jsonrpc": "2.0", %s, "id": 1}' % params)
-        xbmc.executebuiltin("ActivateWindow(10040,addons://user/xbmc.gui.skin,return)")
-        xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Settings.SetSettingValue","id":1,"params":{"setting":"lookandfeel.skin","value":"skin.estuary.iptv.recorder"}}')
-        xbmc.executebuiltin('SendClick(11)')
-        time.sleep(1)
-        xbmc.executebuiltin( 'XBMC.ReloadSkin()' )
-    except:
-        d.ok("IPTV Recorder","Kodi web interface wasn't enabled. Restart Kodi and Enable Skin in My Addons.")
-        xbmc.executebuiltin("ActivateWindow(10040,addons://user/xbmc.gui.skin,return)")
-    xbmcgui.Dialog().notification("IPTV Recorder", "Estuary (IPTV Recorder) created")
-    plugin.set_setting('show.skin','false')
-
-
 def get_free_space_mb(dirname):
     """Return folder/drive free space (in megabytes)."""
     if platform.system() == 'Windows':
@@ -3419,17 +3341,6 @@ def get_free_space_mb(dirname):
 def index():
     items = []
     context_items = []
-
-
-
-    if plugin.get_setting('show.skin', bool):
-        items.append(
-        {
-            'label': "[COLOR yellow]NEW! Create Estuary (IPTV Recorder) Skin[/COLOR]",
-            'path': plugin.url_for('estuary'),
-            'thumbnail':get_icon_path('popular'),
-            'context_menu': context_items,
-        })
 
     items.append(
     {
