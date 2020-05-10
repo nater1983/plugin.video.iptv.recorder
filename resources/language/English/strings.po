@@ -369,3 +369,23 @@ msgstr ""
 msgctxt "#30091"
 msgid "All Channels"
 msgstr ""
+
+msgctxt "#30092"
+msgid "Start Time"
+msgstr ""
+
+msgctxt "#30093"
+msgid "Number of hours to record"
+msgstr ""
+
+msgctxt "#30094"
+msgid "Rule Name"
+msgstr ""
+
+msgctxt "#30095"
+msgid "Start Date"
+msgstr ""
+
+msgctxt "#30096"
+msgid "Stop Time"
+msgstr ""

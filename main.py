@@ -475,12 +475,12 @@ def record_one_time( channelname):
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
-    date = xbmcgui.Dialog().input("Start Date",type=xbmcgui.INPUT_DATE)
+    date = xbmcgui.Dialog().input(_("Start Date"),type=xbmcgui.INPUT_DATE)
     if not date:
         return
     day, month, year = date.split('/')
 
-    start = xbmcgui.Dialog().input("Start Time",type=xbmcgui.INPUT_TIME)
+    start = xbmcgui.Dialog().input(_("Start Time"),type=xbmcgui.INPUT_TIME)
     if not start:
         return
     hms = start.split(':')
@@ -488,7 +488,7 @@ def record_one_time( channelname):
     min = hms[1]
     start = utcnow.replace(day=int(day), month=int(month), year=int(year), hour=int(hour), minute=int(min), second=0, microsecond=0) - timedelta(seconds=utc_offset)
 
-    stop = xbmcgui.Dialog().input("Stop",type=xbmcgui.INPUT_TIME)
+    stop = xbmcgui.Dialog().input(_("Stop Time"),type=xbmcgui.INPUT_TIME)
     if not stop:
         return
     hms = stop.split(':')
@@ -498,7 +498,7 @@ def record_one_time( channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input("Rule Name").decode("utf8")
+    name = xbmcgui.Dialog().input(_("Rule Name")).decode("utf8")
 
     do_refresh = False
     watch = False
@@ -518,7 +518,7 @@ def record_and_play(channelname):
 
     start = utcnow - timedelta(seconds=utc_offset)
 
-    hours = xbmcgui.Dialog().input("Hours",type=xbmcgui.INPUT_NUMERIC,defaultt="4")
+    hours = xbmcgui.Dialog().input(_("Number of hours to record"), type=xbmcgui.INPUT_NUMERIC, defaultt="4")
     #log(hours)
 
     stop = utcnow - timedelta(seconds=utc_offset) + timedelta(hours=int(hours))
@@ -986,13 +986,13 @@ def record_daily_time(channelname):
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
-    start = xbmcgui.Dialog().input("Start Time",type=xbmcgui.INPUT_TIME)
+    start = xbmcgui.Dialog().input(_("Start Time"),type=xbmcgui.INPUT_TIME)
     hms = start.split(':')
     hour = hms[0]
     min = hms[1]
     start = utcnow.replace(hour=int(hour),minute=int(min),second=0,microsecond=0) - timedelta(seconds=utc_offset)
 
-    stop = xbmcgui.Dialog().input("Stop",type=xbmcgui.INPUT_TIME)
+    stop = xbmcgui.Dialog().input(_("Stop Time"),type=xbmcgui.INPUT_TIME)
     hms = stop.split(':')
     hour = hms[0]
     min = hms[1]
@@ -1000,7 +1000,7 @@ def record_daily_time(channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input("Rule Name").decode("utf8")
+    name = xbmcgui.Dialog().input(_("Rule Name")).decode("utf8")
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1029,19 +1029,19 @@ def record_weekly_time(channelname):
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
-    date = xbmcgui.Dialog().input("Start Date",type=xbmcgui.INPUT_DATE)
+    date = xbmcgui.Dialog().input(_("Start Date"),type=xbmcgui.INPUT_DATE)
     if not date:
         return
     day, month, year = date.split('/')
 
-    start = xbmcgui.Dialog().input("Start Time",type=xbmcgui.INPUT_TIME)
+    start = xbmcgui.Dialog().input(_("Start Time"),type=xbmcgui.INPUT_TIME)
     hms = start.split(':')
     hour = hms[0]
     min = hms[1]
 
     start = utcnow.replace(day=int(day), month=int(month), year=int(year), hour=int(hour), minute=int(min), second=0, microsecond=0) - timedelta(seconds=utc_offset)
 
-    stop = xbmcgui.Dialog().input("Stop",type=xbmcgui.INPUT_TIME)
+    stop = xbmcgui.Dialog().input(_("Stop Time"),type=xbmcgui.INPUT_TIME)
     hms = stop.split(':')
     hour = hms[0]
     min = hms[1]
@@ -1049,7 +1049,7 @@ def record_weekly_time(channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input("Rule Name").decode("utf8")
+    name = xbmcgui.Dialog().input(_("Rule Name")).decode("utf8")
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
