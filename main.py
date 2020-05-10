@@ -876,7 +876,6 @@ def convert(path):
 
     while True:
         data_bytes = bytes(input.readBytes(100000))
-        log(("read", len(data_bytes)))
         if not data_bytes:
             break
         p.stdin.write(bytearray(data_bytes))
