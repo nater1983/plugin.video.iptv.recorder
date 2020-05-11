@@ -509,7 +509,6 @@ def record_one_time( channelname):
 
 @plugin.route('/record_and_play/<channelname>')
 def record_and_play(channelname):
-    #channelid = channelid.decode("utf8")
     channelname = channelname.decode("utf8")
 
     utcnow = datetime.utcnow()
@@ -519,7 +518,8 @@ def record_and_play(channelname):
     start = utcnow - timedelta(seconds=utc_offset)
 
     hours = xbmcgui.Dialog().input(_("Number of hours to record"), type=xbmcgui.INPUT_NUMERIC, defaultt="4")
-    #log(hours)
+    if not hours or len(hours) == 0:
+        return
 
     stop = utcnow - timedelta(seconds=utc_offset) + timedelta(hours=int(hours))
 
