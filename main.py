@@ -25,6 +25,7 @@ import subprocess
 import sys
 import threading
 import time
+
 try:
     from urllib.parse import quote, quote_plus, unquote_plus
     from html.parser import HTMLParser
@@ -117,7 +118,6 @@ def find(path):
             new_file = os.path.join(path,dir,new_file)
             all_files.append(new_file)
     return all_dirs, all_files
-
 
 @plugin.route('/play_channel/<channelname>')
 def play_channel(channelname):
@@ -467,7 +467,7 @@ def remind_once(programmeid, channelid, channelname, do_refresh=True, watch=Fals
 
 
 @plugin.route('/record_one_time/<channelname>')
-def record_one_time( channelname):
+def record_one_time(channelname):
     #channelid = channelid.decode("utf8")
     channelname = channelname.decode("utf8")
 
@@ -507,30 +507,24 @@ def record_one_time( channelname):
     threading.Thread(target=record_once_thread,args=[None, do_refresh, watch, remind, channelid, channelname, start, stop, False, name]).start()
 
 
-@plugin.route('/record_and_play/<channelname>')
-def record_and_play(channelname):
+@plugin.route('/record_and_play/<channelid>/<channelname>')
+def record_and_play(channelid, channelname):
     channelname = channelname.decode("utf8")
-
-    utcnow = datetime.utcnow()
-    ts = time.time()
-    utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
-
-    start = utcnow - timedelta(seconds=utc_offset)
+    channelid = channelid.decode("utf8")
+    if channelid == "NO_CHANNEL_ID":
+        channelid = None
 
     hours = xbmcgui.Dialog().input(_("Number of hours to record"), type=xbmcgui.INPUT_NUMERIC, defaultt="4")
     if not hours or len(hours) == 0:
         return
 
-    stop = utcnow - timedelta(seconds=utc_offset) + timedelta(hours=int(hours))
+    start = datetime.utcnow()
+    stop = start + timedelta(hours=int(hours))
 
     do_refresh = False
     watch = False
     remind = False
-    channelid = None
     threading.Thread(target=record_once_thread,args=[None, do_refresh, watch, remind, channelid, channelname, start, stop, True, None]).start()
-    time.sleep(5)
-
-    return recordings()
 
 
 @plugin.route('/record_once_time/<channelid>/<channelname>/<start>/<stop>')
@@ -579,16 +573,45 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
 
+    programme_from_database = None
     if programmeid:
-        programme = cursor.execute('SELECT channelid, title, sub_title, start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date, description, episode, categories FROM programmes WHERE uid=? LIMIT 1', (programmeid, )).fetchone()
-        channelid, title, sub_title, start, stop, date, description, episode, categories = programme
+        programme_from_database = cursor.execute('SELECT channelid, title, sub_title, start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date, description, episode, categories FROM programmes WHERE uid=? LIMIT 1', (programmeid, )).fetchone()
+    elif channelid:
+        all_programme_from_database = cursor.execute('SELECT channelid, title, sub_title, start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date, description, episode, categories FROM programmes WHERE channelid=? AND ((?<=start AND ?<=stop AND ?>=start) or (?>=start AND ?<=stop) OR (?>=start AND ?<=stop AND ?>=stop) OR (?<=start AND ?>=stop))', (channelid, start, stop, stop, start, stop, start, start, stop, start, stop)).fetchall()
+        longest_programme_duration = timedelta(seconds=0)
+        for current_programme_in_database in all_programme_from_database:
+            current_programme_duration = min(current_programme_in_database[4], stop) - max(current_programme_in_database[3], start)
+            if current_programme_duration > longest_programme_duration:
+                longest_programme_duration = current_programme_duration
+                programme_from_database = current_programme_in_database
 
-        nfo = {"programme":{"channelid":channelid, "title":title, "sub_title":sub_title, "start":datetime2timestamp(start), "stop":datetime2timestamp(stop), "date":date, "description":description, "episode":episode, "categories":categories}}
+    programme = {}
+    if programme_from_database:
+        temp_channelid, temp_title, temp_sub_title, temp_start, temp_stop, temp_date, temp_description, temp_episode, temp_categories = programme_from_database
+        programme = {"channelid":temp_channelid, "title":temp_title, "sub_title":temp_sub_title, "start":datetime2timestamp(temp_start), "stop":datetime2timestamp(temp_stop), "date":temp_date, "description":temp_description, "episode":temp_episode, "categories":temp_categories}
+        if start is None:
+            start = temp_start
+        if stop is None:
+            stop = temp_stop
+        if title is None:
+            title = temp_title
     else:
-        #title = None
-        nfo = {}
+        if channelid is not None:
+            programme["channelid"] = channelid
+        if start:
+            programme["start"] = datetime2timestamp(start)
+        if stop:
+            programme["stop"] = datetime2timestamp(stop)
 
-    #log((channelid,channelname))
+    nfo = {}
+    nfo["programme"] = programme
+
+    if not start and not stop:
+        return
+
+    local_starttime = utc2local(start)
+    local_endtime = utc2local(stop)
+
     if channelid:
         channel = cursor.execute("SELECT uid, name, tvg_name, tvg_id, tvg_logo, groups, url FROM streams WHERE tvg_id=? AND tvg_name=?", (channelid, channelname)).fetchone()
         if not channel:
@@ -599,7 +622,7 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
             channel = cursor.execute("SELECT uid, name, tvg_name, tvg_id, tvg_logo, groups, url FROM streams WHERE tvg_name=?", (channelname,)).fetchone()
 
     if not channel:
-        xbmc.log("No channel %s" % channelname, xbmc.LOGERROR)
+        log("No channel %s" % channelname, xbmc.LOGERROR)
         return
 
     uid, name, tvg_name, tvg_id, tvg_logo, groups, url = channel
@@ -607,9 +630,8 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
     if not channelname:
         channelname = name
     nfo["channel"] = {"channelname":channelname, "thumbnail":thumbnail, "channelid":tvg_id}
-    #log(url)
     if not url:
-        xbmc.log("No url for %s" % channelname, xbmc.LOGERROR)
+        log("No url for %s" % channelname, xbmc.LOGERROR)
         return
 
     url_headers = url.split('|', 1)
@@ -622,9 +644,6 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
             for h in aheaders:
                 k, v = h.split('=', 1)
                 headers[k] = unquote_plus(v)
-
-    local_starttime = utc2local(start)
-    local_endtime = utc2local(stop)
 
     if programmeid:
         ftitle = sane_name(title)
@@ -2317,12 +2336,14 @@ def group(channelgroup=None,section=None):
         channelname_encoded = channelname.encode("utf8")
         if channelid:
             channelid_encoded = channelid.encode("utf8")
+        else:
+            channelid_encoded = "NO_CHANNEL_ID".encode("utf8")
 
         if url:
             context_items.append((_("Add One Time Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_one_time, channelname=channelname_encoded))))
             context_items.append((_("Add Daily Time Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_daily_time, channelname=channelname_encoded))))
             context_items.append((_("Add Weekly Time Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_weekly_time, channelname=channelname_encoded))))
-            context_items.append((_("Record and Play"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_and_play, channelname=channelname_encoded))))
+            context_items.append((_("Record and Play"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_and_play, channelid=channelid_encoded, channelname=channelname_encoded))))
             if channelid:
                 context_items.append((_("Add Title Search Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_always_search, channelid=channelid_encoded, channelname=channelname_encoded))))
                 context_items.append((_("Add Plot Search Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_always_search_plot, channelid=channelid_encoded, channelname=channelname_encoded))))
@@ -2681,34 +2702,34 @@ def recordings():
         thumbnail = None
         try:
             json_file = path[:-3]+'.json'
-            info = json.loads(xbmcvfs.File(json_file).read())
+            info = json.loads(xbmcvfs.File(json_file).read().decode('utf-8'))
             programme = info["programme"]
+            channel = info["channel"]
 
-            channelid = programme.get('channelid', None)
-            title = programme['title']
-            sub_title = programme['sub_title'] or ''
-            episode = programme['episode']
-            date = programme.get('date', '')
-            if date is None:
-                date = ''
-            else:
+            title = programme.get('title', None)
+            sub_title = programme.get('sub_title', None) or ''
+            episode = programme.get('episode', None)
+            date = programme.get('date', None) or ''
+            if len(date) > 0:
                 date = "(%s) " % programme.get('date', '')
 
-            start = programme['start']
-            starts.append(start)
+            start = programme.get('start', None)
+            if start is not None:
+                starts.append(start)
 
-            stream_found = cursor.execute("SELECT tvg_logo FROM streams WHERE tvg_id=?", (channelid, )).fetchone()
-            if stream_found:
-                thumbnail = stream_found[0]
+            thumbnail = channel.get("thumbnail", None)
 
-            if episode and episode != "MOVIE":
+            if title and episode and episode != "MOVIE":
                 label = "%s%s [COLOR grey]%s[/COLOR] %s" % (date, title, episode, sub_title)
-            elif episode == "MOVIE":
+            elif title and episode and episode == "MOVIE":
                 label = "%s%s" % (date, title)
-            else:
+            elif title:
                 label = "%s%s %s" % (date, title, sub_title)
+            else:
+                label = unquote_plus(label)
+                label = label.decode("utf8")
 
-            description = programme['description']
+            description = programme.get('description', None) or ''
         except:
             label = os.path.splitext(os.path.basename(path))[0]
             description = ""
