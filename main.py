@@ -28,8 +28,11 @@ import time
 
 try:
     from urllib.parse import quote, quote_plus, unquote_plus
-    from html.parser import HTMLParser
+    from html import unescape as html_unescape
     from io import StringIO
+    class HTMLParser:
+        def unescape(self, string):
+            return html_unescape(string)
 except ImportError:
     from urllib import quote, quote_plus, unquote_plus
     from HTMLParser import HTMLParser
@@ -37,6 +40,7 @@ except ImportError:
 
 import uuid
 from kodi_six import xbmc, xbmcaddon, xbmcvfs, xbmcgui, xbmcplugin
+from kodi_six.utils import encode_decode
 
 def addon_id():
     return xbmcaddon.Addon().getAddonInfo('id')
@@ -50,6 +54,9 @@ def log(v):
 plugin = Plugin()
 big_list_view = True
 
+@encode_decode
+def plugin_url_for(plugin, *args, **kwargs):
+    return plugin.url_for(*args, **kwargs)
 
 if plugin.get_setting('multiline', str) == "true":
     CR = "[CR]"
@@ -121,8 +128,6 @@ def find(path):
 
 @plugin.route('/play_channel/<channelname>')
 def play_channel(channelname):
-    channelname = channelname.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')))
     c = conn.cursor()
 
@@ -137,8 +142,6 @@ def play_channel(channelname):
 
 @plugin.route('/play_channel_external/<channelname>')
 def play_channel_external(channelname):
-    channelname = channelname.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')))
     c = conn.cursor()
 
@@ -215,25 +218,24 @@ def jobs():
         url = ""
         channel = cursor.execute("SELECT name, url FROM streams WHERE tvg_id=?", (channelid, )).fetchone()
         if channel:
-            name, url = channel
-            echannelname=name.encode("utf8")
+            channelname, url = channel
 
         context_items = []
 
-        context_items.append((_("Delete Job"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_job, job=uuid))))
-        context_items.append((_("Delete All Jobs"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_all_jobs))))
+        context_items.append((_("Delete Job"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_job, job=uuid))))
+        context_items.append((_("Delete All Jobs"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_jobs))))
 
-        if url:
-            context_items.append((_("Play Channel"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_channel, channelname=echannelname))))
+        if url and channelname:
+            context_items.append((_("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
             if plugin.get_setting('external.player', str):
-                context_items.append((_("Play Channel External"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_channel_external, channelname=echannelname))))
+                context_items.append((_("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
 
 
         label = "%s [COLOR yellow]%s[/COLOR] %s[COLOR grey]%s - %s[/COLOR] %s" % (channelname, title, CR, utc2local(start), utc2local(stop), type)
 
         items.append({
             'label': label,
-            'path': plugin.url_for(delete_job, job=uuid),
+            'path': plugin_url_for(plugin, delete_job, job=uuid),
             'context_menu': context_items,
             'thumbnail':get_icon_path('recordings'),
         })
@@ -255,17 +257,16 @@ def rules():
         url = ""
         channel = cursor.execute("SELECT uid, name, tvg_name, tvg_id, tvg_logo, groups, url FROM streams WHERE tvg_id=?", (channelid, )).fetchone()
         if channel:
-            cuid, name, tvg_name, tvg_id, tvg_logo, groups, url = channel
-            echannelname=name.encode("utf8")
+            cuid, channelname, tvg_name, tvg_id, tvg_logo, groups, url = channel
 
         context_items = []
-        context_items.append((_("Delete Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_rule, uid=uid))))
-        context_items.append((_("Delete All Rules"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_all_rules))))
+        context_items.append((_("Delete Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_rule, uid=uid))))
+        context_items.append((_("Delete All Rules"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_rules))))
 
         if url:
-            context_items.append((_("Play Channel"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_channel, channelname=echannelname))))
+            context_items.append((_("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
             if plugin.get_setting('external.player', str):
-                context_items.append((_("Play Channel External"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_channel_external, channelname=echannelname))))
+                context_items.append((_("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
 
         if type.startswith("WATCH"):
             type = type.replace("WATCH ","")
@@ -293,7 +294,7 @@ def rules():
 
         items.append({
             'label': label,
-            'path': plugin.url_for(delete_rule, uid=uid),
+            'path': plugin_url_for(plugin, delete_rule, uid=uid),
             'context_menu': context_items,
             'thumbnail':get_icon_path('recordings'),
         })
@@ -441,8 +442,6 @@ def ffmpeg_location():
 
 @plugin.route('/record_once/<programmeid>/<channelid>/<channelname>')
 def record_once(programmeid, channelid, channelname, do_refresh=True, watch=False, remind=False):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
     start = None
     stop = None
     threading.Thread(target=record_once_thread,args=[programmeid, do_refresh, watch, remind, channelid, channelname, start, stop, False, None]).start()
@@ -450,8 +449,6 @@ def record_once(programmeid, channelid, channelname, do_refresh=True, watch=Fals
 
 @plugin.route('/watch_once/<programmeid>/<channelid>/<channelname>')
 def watch_once(programmeid, channelid, channelname, do_refresh=True, watch=True, remind=False):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
     start = None
     stop = None
     threading.Thread(target=record_once_thread,args=[programmeid, do_refresh, watch, remind, channelid, channelname, start, stop, False, None]).start()
@@ -459,8 +456,6 @@ def watch_once(programmeid, channelid, channelname, do_refresh=True, watch=True,
 
 @plugin.route('/remind_once/<programmeid>/<channelid>/<channelname>')
 def remind_once(programmeid, channelid, channelname, do_refresh=True, watch=False, remind=True):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
     start = None
     stop = None
     threading.Thread(target=record_once_thread,args=[programmeid, do_refresh, watch, remind, channelid, channelname, start, stop, False, None]).start()
@@ -468,9 +463,6 @@ def remind_once(programmeid, channelid, channelname, do_refresh=True, watch=Fals
 
 @plugin.route('/record_one_time/<channelname>')
 def record_one_time(channelname):
-    #channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
     utcnow = datetime.utcnow()
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
@@ -498,7 +490,7 @@ def record_one_time(channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input(_("Rule Name")).decode("utf8")
+    name = xbmcgui.Dialog().input(_("Rule Name"))
 
     do_refresh = False
     watch = False
@@ -509,8 +501,6 @@ def record_one_time(channelname):
 
 @plugin.route('/record_and_play/<channelid>/<channelname>')
 def record_and_play(channelid, channelname):
-    channelname = channelname.decode("utf8")
-    channelid = channelid.decode("utf8")
     if channelid == "NO_CHANNEL_ID":
         channelid = None
 
@@ -529,20 +519,13 @@ def record_and_play(channelid, channelname):
 
 @plugin.route('/record_once_time/<channelid>/<channelname>/<start>/<stop>')
 def record_once_time(channelid, channelname, start, stop, do_refresh=True, watch=False, remind=True, title=None):
-    if channelid:
-        channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
     threading.Thread(target=record_once_thread,args=[None, do_refresh, watch, remind, channelid, channelname, start, stop, False, title]).start()
 
 
 @plugin.route('/record_epg/<channelname>/<name>/<start>/<stop>')
 def record_epg(channelname, name, start, stop):
-
-    channelname = channelname.decode("utf8")
-    name = name.decode("utf8")
-
-    start = get_utc_from_string(start.decode("utf8"))
-    stop = get_utc_from_string(stop.decode("utf8"))
+    start = get_utc_from_string(start)
+    stop = get_utc_from_string(stop)
 
     log("Scheduling record for '{}: {} ({} to {})'".format(channelname, name, start, stop))
 
@@ -998,9 +981,6 @@ def refresh():
 
 @plugin.route('/record_daily_time/<channelname>')
 def record_daily_time(channelname):
-    #channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
     utcnow = datetime.utcnow()
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
@@ -1019,7 +999,7 @@ def record_daily_time(channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input(_("Rule Name")).decode("utf8")
+    name = xbmcgui.Dialog().input(_("Rule Name"))
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1041,9 +1021,6 @@ def record_daily_time(channelname):
 
 @plugin.route('/record_weekly_time/<channelname>')
 def record_weekly_time(channelname):
-    #channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
     utcnow = datetime.utcnow()
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
@@ -1068,7 +1045,7 @@ def record_weekly_time(channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input(_("Rule Name")).decode("utf8")
+    name = xbmcgui.Dialog().input(_("Rule Name"))
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1090,10 +1067,7 @@ def record_weekly_time(channelname):
 
 @plugin.route('/record_daily/<channelid>/<channelname>/<title>/<start>/<stop>')
 def record_daily(channelid, channelname, title, start, stop):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1116,10 +1090,7 @@ def record_daily(channelid, channelname, title, start, stop):
 
 @plugin.route('/record_weekly/<channelid>/<channelname>/<title>/<start>/<stop>')
 def record_weekly(channelid, channelname, title, start, stop):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1142,10 +1113,7 @@ def record_weekly(channelid, channelname, title, start, stop):
 
 @plugin.route('/record_always/<channelid>/<channelname>/<title>')
 def record_always(channelid, channelname, title):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1164,10 +1132,7 @@ def record_always(channelid, channelname, title):
 
 @plugin.route('/record_always_search/<channelid>/<channelname>')
 def record_always_search(channelid, channelname):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
-    title = xbmcgui.Dialog().input("IPTV Recorder: " + _("Title Search (% is wildcard)?")).decode("utf8")
+    title = xbmcgui.Dialog().input("IPTV Recorder: " + _("Title Search (% is wildcard)?"))
     if not title:
         return
 
@@ -1188,10 +1153,7 @@ def record_always_search(channelid, channelname):
 
 @plugin.route('/record_always_search_plot/<channelid>/<channelname>')
 def record_always_search_plot(channelid, channelname):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
-    description = xbmcgui.Dialog().input("IPTV Recorder: " + _("Plot Search (% is wildcard)?")).decode("utf8")
+    description = xbmcgui.Dialog().input("IPTV Recorder: " + _("Plot Search (% is wildcard)?"))
     if not description:
         return
 
@@ -1212,10 +1174,7 @@ def record_always_search_plot(channelid, channelname):
 
 @plugin.route('/watch_daily/<channelid>/<channelname>/<title>/<start>/<stop>')
 def watch_daily(channelid, channelname, title, start, stop):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1238,10 +1197,7 @@ def watch_daily(channelid, channelname, title, start, stop):
 
 @plugin.route('/watch_weekly/<channelid>/<channelname>/<title>/<start>/<stop>')
 def watch_weekly(channelid, channelname, title, start, stop):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1264,10 +1220,7 @@ def watch_weekly(channelid, channelname, title, start, stop):
 
 @plugin.route('/watch_always/<channelid>/<channelname>/<title>')
 def watch_always(channelid, channelname, title):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1286,10 +1239,7 @@ def watch_always(channelid, channelname, title):
 
 @plugin.route('/watch_always_search/<channelid>/<channelname>')
 def watch_always_search(channelid, channelname):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
-    title = xbmcgui.Dialog().input("IPTV watcher: " + _("Title Search (% is wildcard)?")).decode("utf8")
+    title = xbmcgui.Dialog().input("IPTV watcher: " + _("Title Search (% is wildcard)?"))
     if not title:
         return
 
@@ -1310,10 +1260,7 @@ def watch_always_search(channelid, channelname):
 
 @plugin.route('/watch_always_search_plot/<channelid>/<channelname>')
 def watch_always_search_plot(channelid, channelname):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
-    description = xbmcgui.Dialog().input("IPTV watcher: " + _("Plot Search (% is wildcard)?")).decode("utf8")
+    description = xbmcgui.Dialog().input("IPTV watcher: " + _("Plot Search (% is wildcard)?"))
     if not description:
         return
 
@@ -1334,10 +1281,7 @@ def watch_always_search_plot(channelid, channelname):
 
 @plugin.route('/remind_daily/<channelid>/<channelname>/<title>/<start>/<stop>')
 def remind_daily(channelid, channelname, title, start, stop):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1360,10 +1304,7 @@ def remind_daily(channelid, channelname, title, start, stop):
 
 @plugin.route('/remind_weekly/<channelid>/<channelname>/<title>/<start>/<stop>')
 def remind_weekly(channelid, channelname, title, start, stop):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1386,10 +1327,7 @@ def remind_weekly(channelid, channelname, title, start, stop):
 
 @plugin.route('/remind_always/<channelid>/<channelname>/<title>')
 def remind_always(channelid, channelname, title):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-    title = title.decode("utf8")
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title).decode("utf8")
+    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1408,10 +1346,7 @@ def remind_always(channelid, channelname, title):
 
 @plugin.route('/remind_always_search/<channelid>/<channelname>')
 def remind_always_search(channelid, channelname):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
-    title = xbmcgui.Dialog().input("IPTV reminder: " + _("Title Search (% is wildcard)?")).decode("utf8")
+    title = xbmcgui.Dialog().input("IPTV reminder: " + _("Title Search (% is wildcard)?"))
     if not title:
         return
 
@@ -1432,10 +1367,7 @@ def remind_always_search(channelid, channelname):
 
 @plugin.route('/remind_always_search_plot/<channelid>/<channelname>')
 def remind_always_search_plot(channelid, channelname):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
-    description = xbmcgui.Dialog().input("IPTV reminder: " + _("Plot Search (% is wildcard)?")).decode("utf8")
+    description = xbmcgui.Dialog().input("IPTV reminder: " + _("Plot Search (% is wildcard)?"))
     if not description:
         return
 
@@ -1456,8 +1388,6 @@ def remind_always_search_plot(channelid, channelname):
 
 @plugin.route('/broadcast/<programmeid>/<channelname>')
 def broadcast(programmeid, channelname):
-    channelname = channelname.decode("utf8")
-    #log(channelname)
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1476,45 +1406,42 @@ def broadcast(programmeid, channelname):
     if not channelname:
         channelname = name
 
-    echannelid = channelid.encode("utf8")
-    echannelname = channelname.encode("utf8")
-    etitle = title.encode("utf8")
-
     items = []
 
     items.append({
         'label': _("Record Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
-        'path': plugin.url_for(record_once, programmeid=programmeid, channelid=echannelid, channelname=echannelname),
+        'path': plugin_url_for(plugin, record_once, programmeid=programmeid, channelid=channelid, channelname=channelname),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     items.append({
         'label': _("Record Always") + " - %s - %s" % (channelname, title),
-        'path': plugin.url_for(record_always, channelid=echannelid, channelname=echannelname, title=etitle),
+        'path': plugin_url_for(plugin, record_always, channelid=channelid, channelname=channelname, title=title),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     start_ts = datetime2timestamp(start)
     stop_ts = datetime2timestamp(stop)
+    log("channelid %s channelname %s title %s start_ts %s stop_ts %s" % (channelid, channelname, title, start_ts, stop_ts)) #%NOCOMMIT%
     items.append({
-        'label': _("Record Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
-        'path': plugin.url_for(record_daily, channelid=echannelid, channelname=echannelname, title=etitle, start=start_ts, stop=stop_ts),
+        'label': (_("Record Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time())),
+        'path': plugin_url_for(plugin, record_daily, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
         'label': _("Record Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
-        'path': plugin.url_for(record_weekly, channelid=echannelid, channelname=echannelname, title=etitle, start=start_ts, stop=stop_ts),
+        'path': plugin_url_for(plugin, record_weekly, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
         'label': _("Watch Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
-        'path': plugin.url_for(watch_once, programmeid=programmeid, channelid=echannelid, channelname=echannelname),
+        'path': plugin_url_for(plugin, watch_once, programmeid=programmeid, channelid=channelid, channelname=channelname),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     items.append({
         'label': _("Watch Always") + " - %s - %s" % (channelname, title),
-        'path': plugin.url_for(watch_always, channelid=echannelid, channelname=echannelname, title=etitle),
+        'path': plugin_url_for(plugin, watch_always, channelid=channelid, channelname=channelname, title=title),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
@@ -1522,24 +1449,24 @@ def broadcast(programmeid, channelname):
     stop_ts = datetime2timestamp(stop)
     items.append({
         'label': _("Watch Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
-        'path': plugin.url_for(watch_daily, channelid=echannelid, channelname=echannelname, title=etitle, start=start_ts, stop=stop_ts),
+        'path': plugin_url_for(plugin, watch_daily, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
         'label': _("Watch Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
-        'path': plugin.url_for(watch_weekly, channelid=echannelid, channelname=echannelname, title=etitle, start=start_ts, stop=stop_ts),
+        'path': plugin_url_for(plugin, watch_weekly, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     items.append({
         'label': _("Remind Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
-        'path': plugin.url_for(remind_once, programmeid=programmeid, channelid=echannelid, channelname=echannelname),
+        'path': plugin_url_for(plugin, remind_once, programmeid=programmeid, channelid=channelid, channelname=channelname),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     items.append({
         'label': _("Remind Always") + " - %s - %s" % (channelname, title),
-        'path': plugin.url_for(remind_always, channelid=echannelid, channelname=echannelname, title=etitle),
+        'path': plugin_url_for(plugin, remind_always, channelid=channelid, channelname=channelname, title=title),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
@@ -1547,17 +1474,17 @@ def broadcast(programmeid, channelname):
     stop_ts = datetime2timestamp(stop)
     items.append({
         'label': _("Remind Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
-        'path': plugin.url_for(remind_daily, channelid=echannelid, channelname=echannelname, title=etitle, start=start_ts, stop=stop_ts),
+        'path': plugin_url_for(plugin, remind_daily, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
         'label': _("Remind Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
-        'path': plugin.url_for(remind_weekly, channelid=echannelid, channelname=echannelname, title=etitle, start=start_ts, stop=stop_ts),
+        'path': plugin_url_for(plugin, remind_weekly, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
         'label': _("Play Channel") + " - %s" % (channelname),
-        'path': plugin.url_for(play_channel, channelname=echannelname),
+        'path': plugin_url_for(plugin, play_channel, channelname=channelname),
         'thumbnail': thumbnail or get_icon_path('tv'),
         'info_type': 'video',
         'info':{"title": channelname},
@@ -1567,7 +1494,7 @@ def broadcast(programmeid, channelname):
     if plugin.get_setting('external.player', str):
         items.append({
             'label': _("Play Channel External") + " - %s" % (channelname),
-            'path': plugin.url_for(play_channel_external, channelname=echannelname),
+            'path': plugin_url_for(plugin, play_channel_external, channelname=channelname),
             'thumbnail': thumbnail or get_icon_path('tv'),
             'info_type': 'video',
             'info':{"title": channelname},
@@ -1656,8 +1583,6 @@ def day(timestamp):
 
 @plugin.route('/delete_search_title/<title>')
 def delete_search_title(title):
-    title = title.decode("utf8")
-
     searches = plugin.get_storage('search_title')
     if title in searches:
         del searches[title]
@@ -1671,17 +1596,17 @@ def search_title_dialog():
     items = []
     items.append({
         "label": "New",
-        "path": plugin.url_for('search_title_input', title='title'),
+        "path": plugin_url_for(plugin, 'search_title_input', title='title'),
         "thumbnail": get_icon_path('search'),
     })
 
     for search in searches:
         context_items = []
         #log(search)
-        context_items.append((_("Delete Search"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_search_title, title=search.encode("utf8")))))
+        context_items.append((_("Delete Search"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_search_title, title=search))))
         items.append({
             "label": search,
-            "path": plugin.url_for('search_title', title=search.encode("utf-8")),
+            "path": plugin_url_for(plugin, 'search_title', title=search),
             "thumbnail": get_icon_path('search'),
             'context_menu': context_items,
             })
@@ -1699,13 +1624,11 @@ def search_title_input(title):
     if not what:
         return
     searches[what] = ''
-    return search_title(what.encode("utf-8"))
+    return search_title(what)
 
 
 @plugin.route('/search_title/<title>')
 def search_title(title):
-    title = title.decode("utf8")
-
     if plugin.get_setting('add.context.searches', str) == 'true':
         searches = plugin.get_storage('search_title')
         searches[title] = ''
@@ -1725,8 +1648,6 @@ def search_title(title):
 
 @plugin.route('/delete_search_plot/<plot>')
 def delete_search_plot(plot):
-    plot = plot.decode("utf8")
-
     searches = plugin.get_storage('search_plot')
     if plot in searches:
         del searches[plot]
@@ -1740,16 +1661,16 @@ def search_plot_dialog():
     items = []
     items.append({
         "label": _("New"),
-        "path": plugin.url_for('search_plot_input', plot='plot'),
+        "path": plugin_url_for(plugin, 'search_plot_input', plot='plot'),
         "thumbnail": get_icon_path('search'),
     })
 
     for search in searches:
         context_items = []
-        context_items.append(("Delete Search" , 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_search_plot, plot=search.encode("utf8")))))
+        context_items.append(("Delete Search" , 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_search_plot, plot=search))))
         items.append({
             "label": search,
-            "path": plugin.url_for('search_plot', plot=search.encode("utf8")),
+            "path": plugin_url_for(plugin, 'search_plot', plot=search),
             "thumbnail": get_icon_path('search'),
             'context_menu': context_items,
             })
@@ -1758,22 +1679,19 @@ def search_plot_dialog():
 
 @plugin.route('/search_plot_input/<plot>')
 def search_plot_input(plot):
-    plot = plot.decode("utf8")
     searches = plugin.get_storage('search_plot')
     if plot == "plot":
         plot = ""
     d = xbmcgui.Dialog()
-    what = d.input(_("Search Plot"), plot).decode("utf8")
+    what = d.input(_("Search Plot"), plot)
     if not what:
         return
     searches[what] = ''
-    return search_plot(what.encode("utf8"))
+    return search_plot(what)
 
 
 @plugin.route('/search_plot/<plot>')
 def search_plot(plot):
-    plot = plot.decode("utf8")
-
     #TODO combine with search_title() and group()
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1790,8 +1708,6 @@ def search_plot(plot):
 
 @plugin.route('/delete_search_categories/<categories>')
 def delete_search_categories(categories):
-    categories = categories.decode("utf8")
-
     searches = plugin.get_storage('search_categories')
     if categories in searches:
         del searches[categories]
@@ -1805,16 +1721,16 @@ def search_categories_dialog():
     items = []
     items.append({
         "label": _("New"),
-        "path": plugin.url_for('search_categories_input', categories='categories'),
+        "path": plugin_url_for(plugin, 'search_categories_input', categories='categories'),
         "thumbnail": get_icon_path('search'),
     })
 
     for search in searches:
         context_items = []
-        context_items.append(("Delete Search" , 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_search_categories, categories=search.encode("utf8")))))
+        context_items.append(("Delete Search" , 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_search_categories, categories=search))))
         items.append({
             "label": search,
-            "path": plugin.url_for('search_categories', categories=search.encode("utf8")),
+            "path": plugin_url_for(plugin, 'search_categories', categories=search),
             "thumbnail": get_icon_path('search'),
             'context_menu': context_items,
             })
@@ -1823,7 +1739,6 @@ def search_categories_dialog():
 
 @plugin.route('/search_categories_input/<categories>')
 def search_categories_input(categories):
-    categories = categories.decode("utf8")
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
 
@@ -1854,8 +1769,6 @@ def search_categories_input(categories):
 
 @plugin.route('/search_categories/<categories>')
 def search_categories(categories):
-    categories = categories.decode("utf8")
-
     if plugin.get_setting('add.context.searches', str) == 'true':
         searches = plugin.get_storage('search_categories')
         searches[categories] = ''
@@ -1876,10 +1789,6 @@ def search_categories(categories):
 
 @plugin.route('/channel/<channelid>/<channelname>')
 def channel(channelid,channelname):
-    channelid = channelid.decode("utf8")
-    echannelname = channelname
-    channelname = channelname.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
 
@@ -1898,15 +1807,13 @@ def channel(channelid,channelname):
     conn.close()
 
     if plugin.get_setting('add.favourite.channel', str) == 'true':
-        add_favourite_channel(channelname.encode("utf8"), channelid.encode("utf8"), thumbnail)
+        add_favourite_channel(channelname, channelid, thumbnail)
 
-    return listing(programmes, scroll=True, channelname=echannelname)
+    return listing(programmes, scroll=True, channelname=channelname)
 
 
 @plugin.route('/tv_show/<title>')
 def tv_show(title):
-    title = title.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
 
@@ -1921,8 +1828,6 @@ def tv_show(title):
 
 @plugin.route('/other/<title>')
 def other(title):
-    title = title.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
 
@@ -1937,8 +1842,6 @@ def other(title):
 
 @plugin.route('/category/<title>')
 def category(title):
-    title = title.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
 
@@ -1953,8 +1856,6 @@ def category(title):
 
 @plugin.route('/movie/<title>/<date>')
 def movie(title, date):
-    title = title.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
 
@@ -1973,7 +1874,7 @@ def movie(title, date):
 
 def listing(programmes, scroll=False, channelname=None):
     if channelname:
-        channelname = unquote_plus(channelname.decode("utf8"))
+        channelname = unquote_plus(channelname)
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -2063,11 +1964,6 @@ def listing(programmes, scroll=False, channelname=None):
 
         context_items = []
 
-        echannelid = channelid.encode("utf8")
-        echannelname=pchannelname.encode("utf8")
-        etitle=title.encode("utf8")
-        ecategories=categories.encode("utf8")
-
         if recording:
             for uuid, type in jobs:
                 if type == "RECORD":
@@ -2076,30 +1972,30 @@ def listing(programmes, scroll=False, channelname=None):
                     message = _("Cancel Remind")
                 elif type == "WATCH":
                     message = _("Cancel Watch")
-                context_items.append((message, 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_job, job=uuid))))
+                context_items.append((message, 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_job, job=uuid))))
         else:
             if url:
-                context_items.append((_("Record Once"), 'XBMC.RunPlugin(%s)' %
-                (plugin.url_for(record_once, programmeid=uid, channelid=echannelid, channelname=echannelname))))
-                context_items.append((_("Watch Once"), 'XBMC.RunPlugin(%s)' %
-                (plugin.url_for(watch_once, programmeid=uid, channelid=echannelid, channelname=echannelname))))
-                context_items.append((_("Remind Once"), 'XBMC.RunPlugin(%s)' %
-                (plugin.url_for(remind_once, programmeid=uid, channelid=echannelid, channelname=echannelname))))
+                context_items.append((_("Record Once"), 'RunPlugin(%s)' %
+                (plugin_url_for(plugin, record_once, programmeid=uid, channelid=channelid, channelname=pchannelname))))
+                context_items.append((_("Watch Once"), 'RunPlugin(%s)' %
+                (plugin_url_for(plugin, watch_once, programmeid=uid, channelid=channelid, channelname=pchannelname))))
+                context_items.append((_("Remind Once"), 'RunPlugin(%s)' %
+                (plugin_url_for(plugin, remind_once, programmeid=uid, channelid=channelid, channelname=pchannelname))))
 
         if url:
-            context_items.append((_("Play Channel"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_channel, channelname=echannelname))))
+            context_items.append((_("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=pchannelname))))
             if plugin.get_setting('external.player', str):
-                context_items.append((_("Play Channel External"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_channel_external, channelname=echannelname))))
+                context_items.append((_("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=pchannelname))))
 
-        context_items.append((echannelname, 'ActivateWindow(%s,%s,return)' % (xbmcgui.getCurrentWindowId(), plugin.url_for('channel', channelid=echannelid, channelname=echannelname))))
-        context_items.append((etitle, 'ActivateWindow(%s,%s,return)' % (xbmcgui.getCurrentWindowId(), plugin.url_for('search_title', title=etitle))))
-        if ecategories:
-            context_items.append((ecategories, 'ActivateWindow(%s,%s,return)' % (xbmcgui.getCurrentWindowId(), plugin.url_for('search_categories', categories=ecategories))))
+        context_items.append((pchannelname, 'ActivateWindow(%s,%s,return)' % (xbmcgui.getCurrentWindowId(), plugin_url_for(plugin, 'channel', channelid=channelid, channelname=pchannelname))))
+        context_items.append((title, 'ActivateWindow(%s,%s,return)' % (xbmcgui.getCurrentWindowId(), plugin_url_for(plugin, 'search_title', title=title))))
+        if categories:
+            context_items.append((categories, 'ActivateWindow(%s,%s,return)' % (xbmcgui.getCurrentWindowId(), plugin_url_for(plugin, 'search_categories', categories=categories))))
 
         if url:
-            path = plugin.url_for(broadcast, programmeid=uid, channelname=echannelname)
+            path = plugin_url_for(plugin, broadcast, programmeid=uid, channelname=pchannelname)
         else:
-            path = plugin.url_for('channel', channelid=echannelid, channelname=echannelname)
+            path = plugin_url_for(plugin, 'channel', channelid=channelid, channelname=pchannelname)
 
         dictitem = {
             'label': label,
@@ -2139,8 +2035,6 @@ def focus(i):
 
 @plugin.route('/remove_favourite_channel/<channelname>')
 def remove_favourite_channel(channelname):
-    channelname = channelname.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')))
 
     conn.execute("DELETE FROM favourites WHERE channelname=?", (channelname, ))
@@ -2153,9 +2047,6 @@ def remove_favourite_channel(channelname):
 
 @plugin.route('/add_favourite_channel/<channelname>/<channelid>/<thumbnail>')
 def add_favourite_channel(channelname, channelid, thumbnail):
-    channelid = channelid.decode("utf8")
-    channelname = channelname.decode("utf8")
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')))
 
     conn.execute("INSERT OR REPLACE INTO favourites(channelname, channelid, logo) VALUES(?, ?, ?)",
@@ -2198,9 +2089,6 @@ def epg():
 
 @plugin.route('/group/<channelgroup>')
 def group(channelgroup=None,section=None):
-    if channelgroup:
-        channelgroup=channelgroup.decode("utf8")
-
     show_now_next = False
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
@@ -2288,9 +2176,6 @@ def group(channelgroup=None,section=None):
             thumbnail = tvg_logo or logos.get(channelid) or channel_logos.get(channelid) or get_icon_path('tv')
             logo = tvg_logo
 
-            #channelname = channelname.encode("ascii")
-            #channelname = channelname.decode("utf8")
-
         description = ""
         categories = ""
 
@@ -2333,31 +2218,30 @@ def group(channelgroup=None,section=None):
 
         context_items = []
 
-        channelname_encoded = channelname.encode("utf8")
         if channelid:
-            channelid_encoded = channelid.encode("utf8")
+            channelid_encoded = channelid
         else:
-            channelid_encoded = "NO_CHANNEL_ID".encode("utf8")
+            channelid_encoded = "NO_CHANNEL_ID"
 
         if url:
-            context_items.append((_("Add One Time Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_one_time, channelname=channelname_encoded))))
-            context_items.append((_("Add Daily Time Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_daily_time, channelname=channelname_encoded))))
-            context_items.append((_("Add Weekly Time Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_weekly_time, channelname=channelname_encoded))))
-            context_items.append((_("Record and Play"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_and_play, channelid=channelid_encoded, channelname=channelname_encoded))))
+            context_items.append((_("Add One Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_one_time, channelname=channelname))))
+            context_items.append((_("Add Daily Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_daily_time, channelname=channelname))))
+            context_items.append((_("Add Weekly Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_weekly_time, channelname=channelname))))
+            context_items.append((_("Record and Play"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_and_play, channelid=channelid_encoded, channelname=channelname))))
             if channelid:
-                context_items.append((_("Add Title Search Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_always_search, channelid=channelid_encoded, channelname=channelname_encoded))))
-                context_items.append((_("Add Plot Search Rule"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(record_always_search_plot, channelid=channelid_encoded, channelname=channelname_encoded))))
-            context_items.append((_("Play Channel"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_channel, channelname=channelname_encoded))))
+                context_items.append((_("Add Title Search Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_always_search, channelid=channelid_encoded, channelname=channelname))))
+                context_items.append((_("Add Plot Search Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_always_search_plot, channelid=channelid_encoded, channelname=channelname))))
+            context_items.append((_("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
             if plugin.get_setting('external.player', str):
-                context_items.append((_("Play Channel External"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_channel_external, channelname=channelname_encoded))))
+                context_items.append((_("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
 
         if channelname not in favourites and channelid:
-            context_items.append((_("Add Favourite Channel"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(add_favourite_channel, channelname=channelname_encoded, channelid=channelid_encoded, thumbnail=thumbnail))))
+            context_items.append((_("Add Favourite Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, add_favourite_channel, channelname=channelname, channelid=channelid_encoded, thumbnail=thumbnail))))
         else:
-            context_items.append((_("Remove Favourite Channel"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(remove_favourite_channel, channelname=channelname_encoded))))
+            context_items.append((_("Remove Favourite Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, remove_favourite_channel, channelname=channelname))))
 
         if url and channelid:
-            path = plugin.url_for(channel, channelid=channelid_encoded, channelname=channelname_encoded)
+            path = plugin_url_for(plugin, channel, channelid=channelid_encoded, channelname=channelname)
         else:
             path = sys.argv[0]
 
@@ -2390,16 +2274,16 @@ def groups():
 
         context_items = []
         if channelgroup not in load_groups:
-            context_items.append((_("Load Group"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(add_load_group, channelgroup=channelgroup.encode("utf8")))))
+            context_items.append((_("Load Group"), 'RunPlugin(%s)' % (plugin_url_for(plugin, add_load_group, channelgroup=channelgroup))))
         else:
-            context_items.append((_("Do Not Load Group"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(remove_load_group, channelgroup=channelgroup.encode("utf8")))))
+            context_items.append((_("Do Not Load Group"), 'RunPlugin(%s)' % (plugin_url_for(plugin, remove_load_group, channelgroup=channelgroup))))
 
         channel_name = channelgroup
         if channel_name == "All_Channels":
             channel_name = _("All Channels")
         items.append({
             'label': channel_name,
-            'path': plugin.url_for(group, channelgroup=channelgroup.encode("utf8")),
+            'path': plugin_url_for(plugin, group, channelgroup=channelgroup),
             'thumbnail': get_icon_path('folder'),
             'context_menu': context_items,
         })
@@ -2420,8 +2304,8 @@ def tv():
         title = title_row[0]
 
         items.append({
-            'label': title.encode("utf8"),
-            'path': plugin.url_for(tv_show, title=title.encode("utf8")),
+            'label': title,
+            'path': plugin_url_for(plugin, tv_show, title=title),
             'thumbnail': get_icon_path('folder'),
         })
 
@@ -2447,7 +2331,7 @@ def movies():
 
         items.append({
             'label': label,
-            'path': plugin.url_for(movie, title=title.encode("utf8"), date=date.encode("utf8")),
+            'path': plugin_url_for(plugin, movie, title=title, date=date),
             'thumbnail': get_icon_path('folder'),
         })
 
@@ -2469,7 +2353,7 @@ def others():
 
         items.append({
             'label': label,
-            'path': plugin.url_for(other, title=title.encode("utf8")),
+            'path': plugin_url_for(plugin, other, title=title),
             'thumbnail': get_icon_path('folder'),
         })
 
@@ -2500,11 +2384,11 @@ def categories():
         if not cat or ',' in cat:
             continue
         label = cat
-        title = cat.encode("utf8")
+        title = cat
 
         items.append({
             'label': label,
-            'path': plugin.url_for(category, title=title),
+            'path': plugin_url_for(plugin, category, title=title),
             'thumbnail': get_icon_path('folder'),
         })
 
@@ -2554,7 +2438,7 @@ def service_thread():
 
             for p in programmes:
                 uid, channel , title , sub_title , date , description , episode, categories = p
-                record_once(programmeid=uid, channelid=jchannelid.encode("utf8"), channelname=jchannelname.encode("utf8"), do_refresh=False, watch=watch, remind=remind)
+                record_once(programmeid=uid, channelid=jchannelid, channelname=jchannelname, do_refresh=False, watch=watch, remind=remind)
 
         elif jtype == "DAILY":
             if jtitle:
@@ -2570,7 +2454,7 @@ def service_thread():
                     tstart = start.time()
                     tstop = stop.time()
                     if tjstart == tstart and tjstop == tstop:
-                        record_once(programmeid=uid, channelid=jchannelid.encode("utf8"), channelname=jchannelname.encode("utf8"), do_refresh=False, watch=watch, remind=remind)
+                        record_once(programmeid=uid, channelid=jchannelid, channelname=jchannelname, do_refresh=False, watch=watch, remind=remind)
             else:
                 tjstart = jstart.time()
                 tjstop = jstop.time()
@@ -2585,9 +2469,7 @@ def service_thread():
                     start = start + timedelta(days=days)
                     stop = stop + timedelta(days=days)
                     if stop > start:
-                        if jchannelid:
-                            jchannelid = jchannelid.encode("utf8")
-                        record_once_time(jchannelid, jchannelname.encode("utf8"), start, stop, do_refresh=False, watch=watch, remind=remind, title=jname)
+                        record_once_time(jchannelid, jchannelname, start, stop, do_refresh=False, watch=watch, remind=remind, title=jname)
 
         elif jtype == "WEEKLY":
             if jtitle:
@@ -2605,7 +2487,7 @@ def service_thread():
                     tstart = start.time()
                     tstop = stop.time()
                     if tjstart_day == tstart_day and tjstart == tstart and tjstop == tstop:
-                        record_once(programmeid=uid, channelid=jchannelid.encode("utf8"), channelname=jchannelname.encode("utf8"), do_refresh=False, watch=watch, remind=remind)
+                        record_once(programmeid=uid, channelid=jchannelid, channelname=jchannelname, do_refresh=False, watch=watch, remind=remind)
             else:
                 tjstart = jstart.time()
                 tjstop = jstop.time()
@@ -2623,28 +2505,25 @@ def service_thread():
                     stop = stop + timedelta(weeks=weeks)
                     if stop > start:
                         #log((jchannelid,jchannelname))
-                        if jchannelid:
-                            jchannelid = jchannelid.encode("utf8")
-                        record_once_time(jchannelid, jchannelname.encode("utf8"), start, stop, do_refresh=False, watch=watch, remind=remind, title=jname)
+                        record_once_time(jchannelid, jchannelname, start, stop, do_refresh=False, watch=watch, remind=remind, title=jname)
 
         elif jtype == "SEARCH":
             programmes = cursor.execute("SELECT uid FROM programmes WHERE channelid=? AND title LIKE ?", (jchannelid, "%"+jtitle+"%")).fetchall()
             for p in programmes:
                 uid = p[0]
-                record_once(programmeid=uid, channelid=jchannelid.encode("utf8"), channelname=jchannelname.encode("utf8"), do_refresh=False, watch=watch, remind=remind)
+                record_once(programmeid=uid, channelid=jchannelid, channelname=jchannelname, do_refresh=False, watch=watch, remind=remind)
 
         elif jtype == "PLOT":
             programmes = cursor.execute("SELECT uid FROM programmes WHERE channelid=? AND description LIKE ?", (jchannelid, "%"+jdescription+"%")).fetchall()
             for p in programmes:
                 uid = p[0]
-                record_once(programmeid=uid, channelid=jchannelid.encode("utf8"), channelname=jchannelname.encode("utf8"), do_refresh=False, watch=watch, remind=remind)
+                record_once(programmeid=uid, channelid=jchannelid, channelname=jchannelname, do_refresh=False, watch=watch, remind=remind)
 
     refresh()
 
 
 @plugin.route('/delete_recording/<label>/<path>')
 def delete_recording(label, path):
-    label = label.decode("utf8")
     if not (xbmcgui.Dialog().yesno("IPTV Recorder", "[COLOR red]" + _("Delete Recording?") + "[/COLOR]", label)):
         return
     xbmcvfs.delete(path)
@@ -2739,11 +2618,11 @@ def recordings():
 
         context_items = []
 
-        context_items.append((_("Delete Recording"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_recording, label=label.encode("utf8"), path=path))))
-        context_items.append((_("Delete All Recordings"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(delete_all_recordings))))
+        context_items.append((_("Delete Recording"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_recording, label=label, path=path))))
+        context_items.append((_("Delete All Recordings"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_recordings))))
         if plugin.get_setting('external.player', str):
-            context_items.append((_("External Player"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(play_external, path=path))))
-        #context_items.append((_("Convert to mp4"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(convert, path=path))))
+            context_items.append((_("External Player"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_external, path=path))))
+        #context_items.append((_("Convert to mp4"), 'RunPlugin(%s)' % (plugin_url_for(plugin, convert, path=path))))
 
         items.append({
             'thumbnail': thumbnail,
@@ -2760,7 +2639,7 @@ def recordings():
     xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_DATE )
 
     start_items = zip(starts,items)
-    start_items.sort(reverse=True)
+    sorted(start_items, reverse=True)
     items = [x for y, x in start_items]
     return sorted(items, key=lambda k: k['label'].lower())
 
@@ -3099,6 +2978,8 @@ def xmltv():
                         start = xml2utc(start)
                         if shift:
                             start = start + timedelta(hours=shift)
+                    else:
+                        start = ''
 
                     stop = re.search('stop="(.*?)"', m)
                     if stop:
@@ -3106,6 +2987,8 @@ def xmltv():
                         stop = xml2utc(stop)
                         if shift:
                             stop = stop + timedelta(hours=shift)
+                    else:
+                        stop = ''
 
                     title = re.search('<title.*?>(.*?)</title', m, flags=(re.I|re.DOTALL))
                     if title:
@@ -3116,10 +2999,14 @@ def xmltv():
                         title = re.sub(search, replace, title)
                     if title:
                         title = title.strip()
+                    else:
+                        title = ''
 
                     sub_title = re.search('<sub-title.*?>(.*?)</sub-title', m, flags=(re.I|re.DOTALL))
                     if sub_title:
                         sub_title = htmlparser.unescape(sub_title.group(1))
+                    else:
+                        sub_title = ''
 
                     description = re.search('<desc.*?>(.*?)</desc', m, flags=(re.I|re.DOTALL))
                     if description:
@@ -3201,7 +3088,7 @@ def search_index():
     items.append(
     {
         'label': _("Search Title"),
-        'path': plugin.url_for('search_title_dialog'),
+        'path': plugin_url_for(plugin, 'search_title_dialog'),
         'thumbnail':get_icon_path('search'),
         'context_menu': context_items,
     })
@@ -3209,7 +3096,7 @@ def search_index():
     items.append(
     {
         'label': _("Search Plot"),
-        'path': plugin.url_for('search_plot_dialog'),
+        'path': plugin_url_for(plugin, 'search_plot_dialog'),
         'thumbnail':get_icon_path('search'),
         'context_menu': context_items,
     })
@@ -3217,7 +3104,7 @@ def search_index():
     items.append(
     {
         'label': _("Search Categories"),
-        'path': plugin.url_for('search_categories_dialog'),
+        'path': plugin_url_for(plugin, 'search_categories_dialog'),
         'thumbnail':get_icon_path('search'),
         'context_menu': context_items,
     })
@@ -3233,7 +3120,7 @@ def browse_index():
     items.append(
     {
         'label': _("TV Shows"),
-        'path': plugin.url_for('tv'),
+        'path': plugin_url_for(plugin, 'tv'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
     })
@@ -3241,7 +3128,7 @@ def browse_index():
     items.append(
     {
         'label': _("Movies"),
-        'path': plugin.url_for('movies'),
+        'path': plugin_url_for(plugin, 'movies'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
     })
@@ -3249,7 +3136,7 @@ def browse_index():
     items.append(
     {
         'label': _("Other"),
-        'path': plugin.url_for('others'),
+        'path': plugin_url_for(plugin, 'others'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
     })
@@ -3257,7 +3144,7 @@ def browse_index():
     items.append(
     {
         'label': _("Categories"),
-        'path': plugin.url_for('categories'),
+        'path': plugin_url_for(plugin, 'categories'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
     })
@@ -3273,7 +3160,7 @@ def maintenance_index():
     items.append(
     {
         'label': _("Jobs"),
-        'path': plugin.url_for('jobs'),
+        'path': plugin_url_for(plugin, 'jobs'),
         'thumbnail':get_icon_path('recordings'),
         'context_menu': context_items,
     })
@@ -3281,7 +3168,7 @@ def maintenance_index():
     items.append(
     {
         'label': _("Rules"),
-        'path': plugin.url_for('rules'),
+        'path': plugin_url_for(plugin, 'rules'),
         'thumbnail':get_icon_path('recordings'),
         'context_menu': context_items,
     })
@@ -3290,7 +3177,7 @@ def maintenance_index():
         items.append(
         {
             'label': _("Service"),
-            'path': plugin.url_for('service'),
+            'path': plugin_url_for(plugin, 'service'),
             'thumbnail':get_icon_path('settings'),
             'context_menu': context_items,
         })
@@ -3298,7 +3185,7 @@ def maintenance_index():
         items.append(
         {
             'label': _("Reload Data"),
-            'path': plugin.url_for('xmltv'),
+            'path': plugin_url_for(plugin, 'xmltv'),
             'thumbnail':get_icon_path('settings'),
             'context_menu': context_items,
         })
@@ -3306,7 +3193,7 @@ def maintenance_index():
         items.append(
         {
             'label': _("NUKE"),
-            'path': plugin.url_for('nuke'),
+            'path': plugin_url_for(plugin, 'nuke'),
             'thumbnail':get_icon_path('settings'),
             'context_menu': context_items,
         })
@@ -3314,7 +3201,7 @@ def maintenance_index():
             items.append(
             {
                 'label': _("Delete ffmpeg"),
-                'path': plugin.url_for('delete_ffmpeg'),
+                'path': plugin_url_for(plugin, 'delete_ffmpeg'),
                 'thumbnail':get_icon_path('settings'),
                 'context_menu': context_items,
             })
@@ -3366,17 +3253,17 @@ def index():
     items.append(
     {
         'label': _("Favourite Channels"),
-        'path': plugin.url_for('favourite_channels'),
+        'path': plugin_url_for(plugin, 'favourite_channels'),
         'thumbnail':get_icon_path('favourites'),
         'context_menu': context_items,
     })
 
     context_items = []
-    context_items.append((_("Select Groups To Load"), 'XBMC.RunPlugin(%s)' % (plugin.url_for(select_groups))))
+    context_items.append((_("Select Groups To Load"), 'RunPlugin(%s)' % (plugin_url_for(plugin, select_groups))))
     items.append(
     {
         'label': _("Channel Groups"),
-        'path': plugin.url_for('groups'),
+        'path': plugin_url_for(plugin, 'groups'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
     })
@@ -3386,7 +3273,7 @@ def index():
     items.append(
     {
         'label': _("Recordings"),
-        'path': plugin.url_for('recordings'),
+        'path': plugin_url_for(plugin, 'recordings'),
         'thumbnail':get_icon_path('recordings'),
         'context_menu': context_items,
     })
@@ -3402,7 +3289,7 @@ def index():
     items.append(
     {
         'label': _("Browse"),
-        'path': plugin.url_for('browse_index'),
+        'path': plugin_url_for(plugin, 'browse_index'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
     })
@@ -3410,7 +3297,7 @@ def index():
     items.append(
     {
         'label': _("Search"),
-        'path': plugin.url_for('search_index'),
+        'path': plugin_url_for(plugin, 'search_index'),
         'thumbnail':get_icon_path('search'),
         'context_menu': context_items,
     })
@@ -3418,7 +3305,7 @@ def index():
     items.append(
     {
         'label': _("Maintenance"),
-        'path': plugin.url_for('maintenance_index'),
+        'path': plugin_url_for(plugin, 'maintenance_index'),
         'thumbnail':get_icon_path('settings'),
         'context_menu': context_items,
     })
@@ -3426,7 +3313,7 @@ def index():
     items.append(
     {
         'label': _("Full EPG"),
-        'path': plugin.url_for('epg'),
+        'path': plugin_url_for(plugin, 'epg'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
     })
@@ -3436,7 +3323,7 @@ def index():
         items.append(
         {
             'label': "[COLOR dimgray]%d MB Free[/COLOR]" % free,
-            'path': plugin.url_for('recordings'),
+            'path': plugin_url_for(plugin, 'recordings'),
             'thumbnail':get_icon_path('settings'),
             'context_menu': context_items,
         })

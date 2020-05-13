@@ -15,7 +15,7 @@ def Service():
         return
     servicing = True
 
-    xbmc.executebuiltin('XBMC.RunPlugin(plugin://plugin.video.iptv.recorder/full_service)')
+    xbmc.executebuiltin('RunPlugin(plugin://plugin.video.iptv.recorder/full_service)')
     time.sleep(2)
     servicing = False
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
         ADDON.setSetting('version', version)
         headers = {'user-agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36', 'referer':'http://%s.%s.com' % (version,ADDON.getAddonInfo('id'))}
         try:
-            r = requests.get(base64.b64decode(b'aHR0cDovL2dvby5nbC93QUE3N1c='),headers=headers)
+            r = requests.get(base64.b64decode(b'aHR0cDovL2dvby5nbC93QUE3N1c='), headers=headers)
             home = r.content
         except: pass
 
@@ -45,7 +45,8 @@ if __name__ == '__main__':
 
             while not monitor.abortRequested():
 
-                if ADDON.getSetting('service.type') == '1':
+                timeLeft = 0
+                if ADDON.getSetting('service.type2') == '0':
                     interval = int(ADDON.getSetting('service.interval'))
                     waitTime = 3600 * interval
                     ts = ADDON.getSetting('last.update') or "0.0"
@@ -56,7 +57,7 @@ if __name__ == '__main__':
                     timeLeft = td.seconds + (td.days * 24 * 3600)
                     xbmc.log("[plugin.video.iptv.recorder] Service waiting for interval %s" % waitTime)
 
-                elif ADDON.getSetting('service.type') == '2':
+                elif ADDON.getSetting('service.type2') == '1':
                     next_time = ADDON.getSetting('service.time')
                     if next_time:
                         hms = next_time.split(':')
@@ -70,17 +71,17 @@ if __name__ == '__main__':
                         timeLeft = td.seconds + (td.days * 24 * 3600)
 
                 if timeLeft <= 0:
-                    timeLeft = 1
+                    timeLeft = 24 * 3600
 
                 xbmc.log("[plugin.video.iptv.recorder] Service waiting for %d seconds" % timeLeft)
                 if timeLeft and monitor.waitForAbort(timeLeft):
                     break
 
-                xbmc.log("[plugin.video.iptv.recorder] Service now triggered...")
+                if ADDON.getSetting('service.type2') != "2":
+                    xbmc.log("[plugin.video.iptv.recorder] Service now triggered...")
+                    xbmc.executebuiltin('RunPlugin(plugin://plugin.video.iptv.recorder/renew_jobs)')
+                    Service()
 
-                xbmc.executebuiltin('XBMC.RunPlugin(plugin://plugin.video.iptv.recorder/renew_jobs)')
-
-                Service()
                 now = time.time()
                 ADDON.setSetting('last.update', str(now))
 
