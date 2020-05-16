@@ -569,6 +569,8 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
                 programme_from_database = current_programme_in_database
 
     programme = {}
+    sub_title = ''
+    episode = ''
     if programme_from_database:
         temp_channelid, temp_title, temp_sub_title, temp_start, temp_stop, temp_date, temp_description, temp_episode, temp_categories = programme_from_database
         programme = {"channelid":temp_channelid, "title":temp_title, "sub_title":temp_sub_title, "start":datetime2timestamp(temp_start), "stop":datetime2timestamp(temp_stop), "date":temp_date, "description":temp_description, "episode":temp_episode, "categories":temp_categories}
@@ -578,6 +580,8 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
             stop = temp_stop
         if title is None:
             title = temp_title
+        sub_title = temp_sub_title
+        episode = temp_episode
     else:
         if channelid is not None:
             programme["channelid"] = channelid
