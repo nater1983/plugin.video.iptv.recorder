@@ -12,6 +12,7 @@ import chardet
 import ctypes
 import glob
 import gzip
+import io
 import json
 import os, os.path
 import platform
@@ -711,6 +712,7 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
     path = os.path.join(dir, filename)
     json_path = path + '.json'
     path = path + '.' + plugin.get_setting('ffmpeg.ext', str)
+    path = path.replace("\\", "\\\\")
     ffmpeg = ffmpeg_location()
     if not ffmpeg:
         return
@@ -752,11 +754,12 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
     xbmcvfs.mkdirs(directory)
     job = str(uuid.uuid1())
     pyjob = directory + job + ".py"
+    pyjob = pyjob.replace("\\", "\\\\")
 
     f = xbmcvfs.File(pyjob, 'wb')
     write_in_file(f, "# -*- coding: utf-8 -*-\n")
-    write_in_file(f, "import os, subprocess, time\n")
-
+    write_in_file(f, "from __future__ import unicode_literals\n")
+    write_in_file(f, "import os, subprocess, time, io\n")
 
     debug = plugin.get_setting('debug.ffmpeg', str) == 'true'
     if watch == False and remind == False:
@@ -783,29 +786,29 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
         else:
             write_in_file(f, "cmd = %s\n" % repr(cmd))
         if debug:
-            write_in_file(f, "stdout = open(r'%s','w+')\n" % xbmc.translatePath(pyjob+'.stdout.txt'))
-            write_in_file(f, "stderr = open(r'%s','w+')\n" % xbmc.translatePath(pyjob+'.stderr.txt'))
+            write_in_file(f, "stdout = open('%s','w+')\n" % xbmc.translatePath(pyjob+'.stdout.txt'))
+            write_in_file(f, "stderr = open('%s','w+')\n" % xbmc.translatePath(pyjob+'.stderr.txt'))
             write_in_file(f, "p = subprocess.Popen(cmd, stdout=stdout, stderr=stderr, shell=%s)\n" % windows())
         else:
             if (plugin.get_setting('ffmpeg.pipe', str) == 'true') and not (windows() and (plugin.get_setting('task.scheduler', str) == 'true')):
                 write_in_file(f, "p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=%s)\n" % windows())
             else:
                 write_in_file(f, "p = subprocess.Popen(cmd, shell=%s)\n" % windows())
-        write_in_file(f, "f = open(r'%s', 'w+')\n" % xbmc.translatePath(pyjob+'.pid'))
-        write_in_file(f, "f.write(repr(p.pid).encode('utf-8'))\n")
+        write_in_file(f, "f = xbmcvfs.File('%s', 'w')\n" % (pyjob + '.pid'))
+        write_in_file(f, "f.write(bytearray(repr(p.pid).encode('utf-8')))\n")
         write_in_file(f, "f.close()\n")
         if (plugin.get_setting('ffmpeg.pipe', str) == 'true') and not (windows() and (plugin.get_setting('task.scheduler', str) == 'true')):
-            write_in_file(f, 'video = xbmcvfs.File(r"%s","wb")\n' % path)
+            write_in_file(f, 'video = xbmcvfs.File("%s", "w")\n' % path)
             write_in_file(f, 'playing = False\n')
             write_in_file(f, "while True:\n")
             write_in_file(f, "  data = p.stdout.read(1000000)\n")
             write_in_file(f, "  if data:\n")
-            write_in_file(f, "      video.write(data)\n")
+            write_in_file(f, "      video.write(bytearray(data))\n")
             write_in_file(f, "  else:\n")
             write_in_file(f, "      break\n")
             if play:
                 write_in_file(f, "  if not playing:\n")
-                write_in_file(f, "    xbmc.Player().play(r'%s')\n" % path)
+                write_in_file(f, "    xbmc.Player().play('%s')\n" % path)
                 write_in_file(f, "    playing = True\n")
             write_in_file(f, "video.close()\n")
         else:
@@ -873,7 +876,7 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
 def convert(path):
     input = xbmcvfs.File(path,'rb')
     output = xbmcvfs.File(path.replace('.ts','.mp4'),'wb')
-    error = open(xbmc.translatePath("special://profile/addon_data/plugin.video.iptv.recorder/errors.txt"),"w")
+    error = open(xbmc.translatePath("special://profile/addon_data/plugin.video.iptv.recorder/errors.txt"), "w", encoding='utf-8')
 
     cmd = [ffmpeg_location(),"-fflags","+genpts","-y","-i","-","-vcodec","copy","-acodec","copy","-f", "mpegts", "-"]
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=error, shell=windows())
@@ -1426,7 +1429,6 @@ def broadcast(programmeid, channelname):
 
     start_ts = datetime2timestamp(start)
     stop_ts = datetime2timestamp(stop)
-    log("channelid %s channelname %s title %s start_ts %s stop_ts %s" % (channelid, channelname, title, start_ts, stop_ts)) #%NOCOMMIT%
     items.append({
         'label': (_("Record Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time())),
         'path': plugin_url_for(plugin, record_daily, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
@@ -2585,7 +2587,7 @@ def recordings():
         thumbnail = None
         try:
             json_file = path[:-3]+'.json'
-            info = json.loads(xbmcvfs.File(json_file).read().decode('utf-8'))
+            info = json.loads(xbmcvfs.File(json_file).read())
             programme = info["programme"]
             channel = info["channel"]
 
@@ -2599,6 +2601,8 @@ def recordings():
             start = programme.get('start', None)
             if start is not None:
                 starts.append(start)
+            else:
+                starts.append("0")
 
             thumbnail = channel.get("thumbnail", None)
 
@@ -2610,7 +2614,6 @@ def recordings():
                 label = "%s%s %s" % (date, title, sub_title)
             else:
                 label = unquote_plus(label)
-                label = label.decode("utf8")
 
             description = programme.get('description', None) or ''
         except:
@@ -2618,7 +2621,6 @@ def recordings():
             description = ""
             starts.append("0")
             label = unquote_plus(label)
-            label = label.decode("utf8")
 
         context_items = []
 
@@ -2643,9 +2645,9 @@ def recordings():
     xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_DATE )
 
     start_items = zip(starts,items)
-    sorted(start_items, reverse=True)
+    start_items = sorted(start_items, reverse=True, key=lambda k: k[0])
     items = [x for y, x in start_items]
-    return sorted(items, key=lambda k: k['label'].lower())
+    return items
 
 
 def xml2utc(xml):
