@@ -2530,9 +2530,10 @@ def service_thread():
 
 @plugin.route('/delete_recording/<label>/<path>')
 def delete_recording(label, path):
-    if not (xbmcgui.Dialog().yesno("IPTV Recorder", "[COLOR red]" + _("Delete Recording?") + "[/COLOR]", label)):
+    if not (xbmcgui.Dialog().yesno("IPTV Recorder", "[COLOR red]" + _("Delete Recording?") + "[/COLOR]\n" + label)):
         return
-    xbmcvfs.delete(path)
+    if not xbmcvfs.delete(path):
+        return
     length = int(len('.' + plugin.get_setting('ffmpeg.ext', str)))
     xbmcvfs.delete(path[:-length]+'.json')
     refresh()
