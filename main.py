@@ -2603,7 +2603,7 @@ def recordings():
             if start is not None:
                 starts.append(start)
             else:
-                starts.append("0")
+                starts.append(0)
 
             thumbnail = channel.get("thumbnail", None)
 
@@ -2620,7 +2620,7 @@ def recordings():
         except:
             label = os.path.splitext(os.path.basename(path))[0]
             description = ""
-            starts.append("0")
+            starts.append(0)
             label = unquote_plus(label)
 
         context_items = []
