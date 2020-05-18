@@ -2646,7 +2646,7 @@ def recordings():
     xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_DATE )
 
     start_items = zip(starts,items)
-    start_items = sorted(start_items, reverse=True, key=lambda k: k[0])
+    start_items = sorted(start_items, key=lambda k: k[0])
     items = [x for y, x in start_items]
     return items
 
