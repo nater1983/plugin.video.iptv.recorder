@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from xbmcswift2 import Plugin, ListItem
 from collections import namedtuple
 from datetime import datetime, timedelta, tzinfo
-from language import get_string as _
+from language import get_string
 from struct import *
 import base64
 import calendar
@@ -223,13 +223,13 @@ def jobs():
 
         context_items = []
 
-        context_items.append((_("Delete Job"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_job, job=uuid))))
-        context_items.append((_("Delete All Jobs"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_jobs))))
+        context_items.append((get_string("Delete Job"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_job, job=uuid))))
+        context_items.append((get_string("Delete All Jobs"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_jobs))))
 
         if url and channelname:
-            context_items.append((_("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
+            context_items.append((get_string("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
             if plugin.get_setting('external.player', str):
-                context_items.append((_("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
+                context_items.append((get_string("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
 
 
         label = "%s [COLOR yellow]%s[/COLOR] %s[COLOR grey]%s - %s[/COLOR] %s" % (channelname, title, CR, utc2local(start), utc2local(stop), type)
@@ -261,13 +261,13 @@ def rules():
             cuid, channelname, tvg_name, tvg_id, tvg_logo, groups, url = channel
 
         context_items = []
-        context_items.append((_("Delete Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_rule, uid=uid))))
-        context_items.append((_("Delete All Rules"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_rules))))
+        context_items.append((get_string("Delete Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_rule, uid=uid))))
+        context_items.append((get_string("Delete All Rules"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_rules))))
 
         if url:
-            context_items.append((_("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
+            context_items.append((get_string("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
             if plugin.get_setting('external.player', str):
-                context_items.append((_("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
+                context_items.append((get_string("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
 
         if type.startswith("WATCH"):
             type = type.replace("WATCH ","")
@@ -305,7 +305,7 @@ def rules():
 
 @plugin.route('/delete_all_rules')
 def delete_all_rules(ask=True):
-    if ask and not (xbmcgui.Dialog().yesno("IPTV Recorder", _("Delete All Rules?"))):
+    if ask and not (xbmcgui.Dialog().yesno("IPTV Recorder", get_string("Delete All Rules?"))):
         return
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
@@ -324,7 +324,7 @@ def delete_rule(uid, ask=True):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
 
-    if ask and not (xbmcgui.Dialog().yesno("IPTV Recorder", _("Cancel Record?"))):
+    if ask and not (xbmcgui.Dialog().yesno("IPTV Recorder", get_string("Cancel Record?"))):
         return
 
     conn.execute("DELETE FROM rules WHERE uid=?", (uid, ))
@@ -337,7 +337,7 @@ def delete_rule(uid, ask=True):
 
 @plugin.route('/delete_all_jobs')
 def delete_all_jobs(ask=True):
-    if ask and not (xbmcgui.Dialog().yesno("IPTV Recorder", _("Delete All Jobs?"))):
+    if ask and not (xbmcgui.Dialog().yesno("IPTV Recorder", get_string("Delete All Jobs?"))):
         return
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
@@ -360,7 +360,7 @@ def delete_job(job, kill=True, ask=True):
     if not job_details:
         return
 
-    if ask and not (xbmcgui.Dialog().yesno("IPTV Recorder", _("Cancel Record?"))):
+    if ask and not (xbmcgui.Dialog().yesno("IPTV Recorder", get_string("Cancel Record?"))):
         return
 
     if windows() and plugin.get_setting('task.scheduler', str) == 'true':
@@ -438,7 +438,7 @@ def ffmpeg_location():
     if xbmcvfs.exists(ffmpeg):
         return ffmpeg
     else:
-        xbmcgui.Dialog().notification("IPTV Recorder", _("ffmpeg exe not found!"))
+        xbmcgui.Dialog().notification("IPTV Recorder", get_string("ffmpeg exe not found!"))
 
 
 @plugin.route('/record_once/<programmeid>/<channelid>/<channelname>')
@@ -468,12 +468,12 @@ def record_one_time(channelname):
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
-    date = xbmcgui.Dialog().input(_("Start Date"),type=xbmcgui.INPUT_DATE)
+    date = xbmcgui.Dialog().input(get_string("Start Date"),type=xbmcgui.INPUT_DATE)
     if not date:
         return
     day, month, year = date.split('/')
 
-    start = xbmcgui.Dialog().input(_("Start Time"),type=xbmcgui.INPUT_TIME)
+    start = xbmcgui.Dialog().input(get_string("Start Time"),type=xbmcgui.INPUT_TIME)
     if not start:
         return
     hms = start.split(':')
@@ -481,7 +481,7 @@ def record_one_time(channelname):
     min = hms[1]
     start = utcnow.replace(day=int(day), month=int(month), year=int(year), hour=int(hour), minute=int(min), second=0, microsecond=0) - timedelta(seconds=utc_offset)
 
-    stop = xbmcgui.Dialog().input(_("Stop Time"),type=xbmcgui.INPUT_TIME)
+    stop = xbmcgui.Dialog().input(get_string("Stop Time"),type=xbmcgui.INPUT_TIME)
     if not stop:
         return
     hms = stop.split(':')
@@ -491,7 +491,7 @@ def record_one_time(channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input(_("Rule Name"))
+    name = xbmcgui.Dialog().input(get_string("Rule Name"))
 
     do_refresh = False
     watch = False
@@ -505,7 +505,7 @@ def record_and_play(channelid, channelname):
     if channelid == "NO_CHANNEL_ID":
         channelid = None
 
-    hours = xbmcgui.Dialog().input(_("Number of hours to record"), type=xbmcgui.INPUT_NUMERIC, defaultt="4")
+    hours = xbmcgui.Dialog().input(get_string("Number of hours to record"), type=xbmcgui.INPUT_NUMERIC, defaultt="4")
     if not hours or len(hours) == 0:
         return
 
@@ -992,13 +992,13 @@ def record_daily_time(channelname):
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
-    start = xbmcgui.Dialog().input(_("Start Time"),type=xbmcgui.INPUT_TIME)
+    start = xbmcgui.Dialog().input(get_string("Start Time"),type=xbmcgui.INPUT_TIME)
     hms = start.split(':')
     hour = hms[0]
     min = hms[1]
     start = utcnow.replace(hour=int(hour),minute=int(min),second=0,microsecond=0) - timedelta(seconds=utc_offset)
 
-    stop = xbmcgui.Dialog().input(_("Stop Time"),type=xbmcgui.INPUT_TIME)
+    stop = xbmcgui.Dialog().input(get_string("Stop Time"),type=xbmcgui.INPUT_TIME)
     hms = stop.split(':')
     hour = hms[0]
     min = hms[1]
@@ -1006,7 +1006,7 @@ def record_daily_time(channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input(_("Rule Name"))
+    name = xbmcgui.Dialog().input(get_string("Rule Name"))
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1032,19 +1032,19 @@ def record_weekly_time(channelname):
     ts = time.time()
     utc_offset = total_seconds(datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
-    date = xbmcgui.Dialog().input(_("Start Date"),type=xbmcgui.INPUT_DATE)
+    date = xbmcgui.Dialog().input(get_string("Start Date"),type=xbmcgui.INPUT_DATE)
     if not date:
         return
     day, month, year = date.split('/')
 
-    start = xbmcgui.Dialog().input(_("Start Time"),type=xbmcgui.INPUT_TIME)
+    start = xbmcgui.Dialog().input(get_string("Start Time"),type=xbmcgui.INPUT_TIME)
     hms = start.split(':')
     hour = hms[0]
     min = hms[1]
 
     start = utcnow.replace(day=int(day), month=int(month), year=int(year), hour=int(hour), minute=int(min), second=0, microsecond=0) - timedelta(seconds=utc_offset)
 
-    stop = xbmcgui.Dialog().input(_("Stop Time"),type=xbmcgui.INPUT_TIME)
+    stop = xbmcgui.Dialog().input(get_string("Stop Time"),type=xbmcgui.INPUT_TIME)
     hms = stop.split(':')
     hour = hms[0]
     min = hms[1]
@@ -1052,7 +1052,7 @@ def record_weekly_time(channelname):
     if stop < start:
         stop = stop + timedelta(days=1)
 
-    name = xbmcgui.Dialog().input(_("Rule Name"))
+    name = xbmcgui.Dialog().input(get_string("Rule Name"))
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1074,7 +1074,7 @@ def record_weekly_time(channelname):
 
 @plugin.route('/record_daily/<channelid>/<channelname>/<title>/<start>/<stop>')
 def record_daily(channelid, channelname, title, start, stop):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1097,7 +1097,7 @@ def record_daily(channelid, channelname, title, start, stop):
 
 @plugin.route('/record_weekly/<channelid>/<channelname>/<title>/<start>/<stop>')
 def record_weekly(channelid, channelname, title, start, stop):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1120,7 +1120,7 @@ def record_weekly(channelid, channelname, title, start, stop):
 
 @plugin.route('/record_always/<channelid>/<channelname>/<title>')
 def record_always(channelid, channelname, title):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1139,7 +1139,7 @@ def record_always(channelid, channelname, title):
 
 @plugin.route('/record_always_search/<channelid>/<channelname>')
 def record_always_search(channelid, channelname):
-    title = xbmcgui.Dialog().input("IPTV Recorder: " + _("Title Search (% is wildcard)?"))
+    title = xbmcgui.Dialog().input("IPTV Recorder: " + get_string("Title Search (% is wildcard)?"))
     if not title:
         return
 
@@ -1160,7 +1160,7 @@ def record_always_search(channelid, channelname):
 
 @plugin.route('/record_always_search_plot/<channelid>/<channelname>')
 def record_always_search_plot(channelid, channelname):
-    description = xbmcgui.Dialog().input("IPTV Recorder: " + _("Plot Search (% is wildcard)?"))
+    description = xbmcgui.Dialog().input("IPTV Recorder: " + get_string("Plot Search (% is wildcard)?"))
     if not description:
         return
 
@@ -1181,7 +1181,7 @@ def record_always_search_plot(channelid, channelname):
 
 @plugin.route('/watch_daily/<channelid>/<channelname>/<title>/<start>/<stop>')
 def watch_daily(channelid, channelname, title, start, stop):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1204,7 +1204,7 @@ def watch_daily(channelid, channelname, title, start, stop):
 
 @plugin.route('/watch_weekly/<channelid>/<channelname>/<title>/<start>/<stop>')
 def watch_weekly(channelid, channelname, title, start, stop):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1227,7 +1227,7 @@ def watch_weekly(channelid, channelname, title, start, stop):
 
 @plugin.route('/watch_always/<channelid>/<channelname>/<title>')
 def watch_always(channelid, channelname, title):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1246,7 +1246,7 @@ def watch_always(channelid, channelname, title):
 
 @plugin.route('/watch_always_search/<channelid>/<channelname>')
 def watch_always_search(channelid, channelname):
-    title = xbmcgui.Dialog().input("IPTV watcher: " + _("Title Search (% is wildcard)?"))
+    title = xbmcgui.Dialog().input("IPTV watcher: " + get_string("Title Search (% is wildcard)?"))
     if not title:
         return
 
@@ -1267,7 +1267,7 @@ def watch_always_search(channelid, channelname):
 
 @plugin.route('/watch_always_search_plot/<channelid>/<channelname>')
 def watch_always_search_plot(channelid, channelname):
-    description = xbmcgui.Dialog().input("IPTV watcher: " + _("Plot Search (% is wildcard)?"))
+    description = xbmcgui.Dialog().input("IPTV watcher: " + get_string("Plot Search (% is wildcard)?"))
     if not description:
         return
 
@@ -1288,7 +1288,7 @@ def watch_always_search_plot(channelid, channelname):
 
 @plugin.route('/remind_daily/<channelid>/<channelname>/<title>/<start>/<stop>')
 def remind_daily(channelid, channelname, title, start, stop):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1311,7 +1311,7 @@ def remind_daily(channelid, channelname, title, start, stop):
 
 @plugin.route('/remind_weekly/<channelid>/<channelname>/<title>/<start>/<stop>')
 def remind_weekly(channelid, channelname, title, start, stop):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     start = timestamp2datetime(float(start))
     stop = timestamp2datetime(float(stop))
@@ -1334,7 +1334,7 @@ def remind_weekly(channelid, channelname, title, start, stop):
 
 @plugin.route('/remind_always/<channelid>/<channelname>/<title>')
 def remind_always(channelid, channelname, title):
-    title = xbmcgui.Dialog().input(_("% is Wildcard"), title)
+    title = xbmcgui.Dialog().input(get_string("% is Wildcard"), title)
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
@@ -1353,7 +1353,7 @@ def remind_always(channelid, channelname, title):
 
 @plugin.route('/remind_always_search/<channelid>/<channelname>')
 def remind_always_search(channelid, channelname):
-    title = xbmcgui.Dialog().input("IPTV reminder: " + _("Title Search (% is wildcard)?"))
+    title = xbmcgui.Dialog().input("IPTV reminder: " + get_string("Title Search (% is wildcard)?"))
     if not title:
         return
 
@@ -1374,7 +1374,7 @@ def remind_always_search(channelid, channelname):
 
 @plugin.route('/remind_always_search_plot/<channelid>/<channelname>')
 def remind_always_search_plot(channelid, channelname):
-    description = xbmcgui.Dialog().input("IPTV reminder: " + _("Plot Search (% is wildcard)?"))
+    description = xbmcgui.Dialog().input("IPTV reminder: " + get_string("Plot Search (% is wildcard)?"))
     if not description:
         return
 
@@ -1416,13 +1416,13 @@ def broadcast(programmeid, channelname):
     items = []
 
     items.append({
-        'label': _("Record Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
+        'label': get_string("Record Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
         'path': plugin_url_for(plugin, record_once, programmeid=programmeid, channelid=channelid, channelname=channelname),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     items.append({
-        'label': _("Record Always") + " - %s - %s" % (channelname, title),
+        'label': get_string("Record Always") + " - %s - %s" % (channelname, title),
         'path': plugin_url_for(plugin, record_always, channelid=channelid, channelname=channelname, title=title),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
@@ -1430,23 +1430,23 @@ def broadcast(programmeid, channelname):
     start_ts = datetime2timestamp(start)
     stop_ts = datetime2timestamp(stop)
     items.append({
-        'label': (_("Record Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time())),
+        'label': (get_string("Record Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time())),
         'path': plugin_url_for(plugin, record_daily, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
-        'label': _("Record Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
+        'label': get_string("Record Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
         'path': plugin_url_for(plugin, record_weekly, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
-        'label': _("Watch Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
+        'label': get_string("Watch Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
         'path': plugin_url_for(plugin, watch_once, programmeid=programmeid, channelid=channelid, channelname=channelname),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     items.append({
-        'label': _("Watch Always") + " - %s - %s" % (channelname, title),
+        'label': get_string("Watch Always") + " - %s - %s" % (channelname, title),
         'path': plugin_url_for(plugin, watch_always, channelid=channelid, channelname=channelname, title=title),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
@@ -1454,24 +1454,24 @@ def broadcast(programmeid, channelname):
     start_ts = datetime2timestamp(start)
     stop_ts = datetime2timestamp(stop)
     items.append({
-        'label': _("Watch Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
+        'label': get_string("Watch Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
         'path': plugin_url_for(plugin, watch_daily, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
-        'label': _("Watch Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
+        'label': get_string("Watch Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
         'path': plugin_url_for(plugin, watch_weekly, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     items.append({
-        'label': _("Remind Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
+        'label': get_string("Remind Once") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start), utc2local(stop)),
         'path': plugin_url_for(plugin, remind_once, programmeid=programmeid, channelid=channelid, channelname=channelname),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
 
     items.append({
-        'label': _("Remind Always") + " - %s - %s" % (channelname, title),
+        'label': get_string("Remind Always") + " - %s - %s" % (channelname, title),
         'path': plugin_url_for(plugin, remind_always, channelid=channelid, channelname=channelname, title=title),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
@@ -1479,17 +1479,17 @@ def broadcast(programmeid, channelname):
     start_ts = datetime2timestamp(start)
     stop_ts = datetime2timestamp(stop)
     items.append({
-        'label': _("Remind Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
+        'label': get_string("Remind Daily") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
         'path': plugin_url_for(plugin, remind_daily, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
-        'label': _("Remind Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
+        'label': get_string("Remind Weekly") + " - %s - %s %s[COLOR grey]%s - %s[/COLOR]" % (channelname, title, CR, utc2local(start).time(), utc2local(stop).time()),
         'path': plugin_url_for(plugin, remind_weekly, channelid=channelid, channelname=channelname, title=title, start=str(start_ts), stop=str(stop_ts)),
         'thumbnail': thumbnail or get_icon_path('recordings'),
     })
     items.append({
-        'label': _("Play Channel") + " - %s" % (channelname),
+        'label': get_string("Play Channel") + " - %s" % (channelname),
         'path': plugin_url_for(plugin, play_channel, channelname=channelname),
         'thumbnail': thumbnail or get_icon_path('tv'),
         'info_type': 'video',
@@ -1499,7 +1499,7 @@ def broadcast(programmeid, channelname):
 
     if plugin.get_setting('external.player', str):
         items.append({
-            'label': _("Play Channel External") + " - %s" % (channelname),
+            'label': get_string("Play Channel External") + " - %s" % (channelname),
             'path': plugin_url_for(plugin, play_channel_external, channelname=channelname),
             'thumbnail': thumbnail or get_icon_path('tv'),
             'info_type': 'video',
@@ -1578,13 +1578,13 @@ def day(timestamp):
         tomorrow = today + timedelta(days=1)
         yesterday = today - timedelta(days=1)
         if today.date() == timestamp.date():
-            return _('Today')
+            return get_string('Today')
         elif tomorrow.date() == timestamp.date():
-            return _('Tomorrow')
+            return get_string('Tomorrow')
         elif yesterday.date() == timestamp.date():
-            return _('Yesterday')
+            return get_string('Yesterday')
         else:
-            return _(timestamp.strftime("%A"))
+            return get_string(timestamp.strftime("%A"))
 
 
 @plugin.route('/delete_search_title/<title>')
@@ -1609,7 +1609,7 @@ def search_title_dialog():
     for search in searches:
         context_items = []
         #log(search)
-        context_items.append((_("Delete Search"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_search_title, title=search))))
+        context_items.append((get_string("Delete Search"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_search_title, title=search))))
         items.append({
             "label": search,
             "path": plugin_url_for(plugin, 'search_title', title=search),
@@ -1625,7 +1625,7 @@ def search_title_input(title):
     if title == "title":
         title = ""
     d = xbmcgui.Dialog()
-    what = d.input(_("Search Title"), title)
+    what = d.input(get_string("Search Title"), title)
     #log(what)
     if not what:
         return
@@ -1666,7 +1666,7 @@ def search_plot_dialog():
 
     items = []
     items.append({
-        "label": _("New"),
+        "label": get_string("New"),
         "path": plugin_url_for(plugin, 'search_plot_input', plot='plot'),
         "thumbnail": get_icon_path('search'),
     })
@@ -1689,7 +1689,7 @@ def search_plot_input(plot):
     if plot == "plot":
         plot = ""
     d = xbmcgui.Dialog()
-    what = d.input(_("Search Plot"), plot)
+    what = d.input(get_string("Search Plot"), plot)
     if not what:
         return
     searches[what] = ''
@@ -1726,7 +1726,7 @@ def search_categories_dialog():
 
     items = []
     items.append({
-        "label": _("New"),
+        "label": get_string("New"),
         "path": plugin_url_for(plugin, 'search_categories_input', categories='categories'),
         "thumbnail": get_icon_path('search'),
     })
@@ -1764,7 +1764,7 @@ def search_categories_input(categories):
     if categories == "categories":
         categories = ""
     d = xbmcgui.Dialog()
-    what = d.select(_("Search categories"), cats)
+    what = d.select(get_string("Search categories"), cats)
     if not what:
         return
     what = cats[what]
@@ -1973,25 +1973,25 @@ def listing(programmes, scroll=False, channelname=None):
         if recording:
             for uuid, type in jobs:
                 if type == "RECORD":
-                    message = _("Cancel Record")
+                    message = get_string("Cancel Record")
                 elif type == "REMIND":
-                    message = _("Cancel Remind")
+                    message = get_string("Cancel Remind")
                 elif type == "WATCH":
-                    message = _("Cancel Watch")
+                    message = get_string("Cancel Watch")
                 context_items.append((message, 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_job, job=uuid))))
         else:
             if url:
-                context_items.append((_("Record Once"), 'RunPlugin(%s)' %
+                context_items.append((get_string("Record Once"), 'RunPlugin(%s)' %
                 (plugin_url_for(plugin, record_once, programmeid=uid, channelid=channelid, channelname=pchannelname))))
-                context_items.append((_("Watch Once"), 'RunPlugin(%s)' %
+                context_items.append((get_string("Watch Once"), 'RunPlugin(%s)' %
                 (plugin_url_for(plugin, watch_once, programmeid=uid, channelid=channelid, channelname=pchannelname))))
-                context_items.append((_("Remind Once"), 'RunPlugin(%s)' %
+                context_items.append((get_string("Remind Once"), 'RunPlugin(%s)' %
                 (plugin_url_for(plugin, remind_once, programmeid=uid, channelid=channelid, channelname=pchannelname))))
 
         if url:
-            context_items.append((_("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=pchannelname))))
+            context_items.append((get_string("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=pchannelname))))
             if plugin.get_setting('external.player', str):
-                context_items.append((_("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=pchannelname))))
+                context_items.append((get_string("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=pchannelname))))
 
         context_items.append((pchannelname, 'ActivateWindow(%s,%s,return)' % (xbmcgui.getCurrentWindowId(), plugin_url_for(plugin, 'channel', channelid=channelid, channelname=pchannelname))))
         context_items.append((title, 'ActivateWindow(%s,%s,return)' % (xbmcgui.getCurrentWindowId(), plugin_url_for(plugin, 'search_title', title=title))))
@@ -2230,21 +2230,21 @@ def group(channelgroup=None,section=None):
             channelid_encoded = "NO_CHANNEL_ID"
 
         if url:
-            context_items.append((_("Add One Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_one_time, channelname=channelname))))
-            context_items.append((_("Add Daily Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_daily_time, channelname=channelname))))
-            context_items.append((_("Add Weekly Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_weekly_time, channelname=channelname))))
-            context_items.append((_("Record and Play"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_and_play, channelid=channelid_encoded, channelname=channelname))))
+            context_items.append((get_string("Add One Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_one_time, channelname=channelname))))
+            context_items.append((get_string("Add Daily Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_daily_time, channelname=channelname))))
+            context_items.append((get_string("Add Weekly Time Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_weekly_time, channelname=channelname))))
+            context_items.append((get_string("Record and Play"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_and_play, channelid=channelid_encoded, channelname=channelname))))
             if channelid:
-                context_items.append((_("Add Title Search Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_always_search, channelid=channelid_encoded, channelname=channelname))))
-                context_items.append((_("Add Plot Search Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_always_search_plot, channelid=channelid_encoded, channelname=channelname))))
-            context_items.append((_("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
+                context_items.append((get_string("Add Title Search Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_always_search, channelid=channelid_encoded, channelname=channelname))))
+                context_items.append((get_string("Add Plot Search Rule"), 'RunPlugin(%s)' % (plugin_url_for(plugin, record_always_search_plot, channelid=channelid_encoded, channelname=channelname))))
+            context_items.append((get_string("Play Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel, channelname=channelname))))
             if plugin.get_setting('external.player', str):
-                context_items.append((_("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
+                context_items.append((get_string("Play Channel External"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_channel_external, channelname=channelname))))
 
         if channelname not in favourites and channelid:
-            context_items.append((_("Add Favourite Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, add_favourite_channel, channelname=channelname, channelid=channelid_encoded, thumbnail=thumbnail))))
+            context_items.append((get_string("Add Favourite Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, add_favourite_channel, channelname=channelname, channelid=channelid_encoded, thumbnail=thumbnail))))
         else:
-            context_items.append((_("Remove Favourite Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, remove_favourite_channel, channelname=channelname))))
+            context_items.append((get_string("Remove Favourite Channel"), 'RunPlugin(%s)' % (plugin_url_for(plugin, remove_favourite_channel, channelname=channelname))))
 
         if url and channelid:
             path = plugin_url_for(plugin, channel, channelid=channelid_encoded, channelname=channelname)
@@ -2280,13 +2280,13 @@ def groups():
 
         context_items = []
         if channelgroup not in load_groups:
-            context_items.append((_("Load Group"), 'RunPlugin(%s)' % (plugin_url_for(plugin, add_load_group, channelgroup=channelgroup))))
+            context_items.append((get_string("Load Group"), 'RunPlugin(%s)' % (plugin_url_for(plugin, add_load_group, channelgroup=channelgroup))))
         else:
-            context_items.append((_("Do Not Load Group"), 'RunPlugin(%s)' % (plugin_url_for(plugin, remove_load_group, channelgroup=channelgroup))))
+            context_items.append((get_string("Do Not Load Group"), 'RunPlugin(%s)' % (plugin_url_for(plugin, remove_load_group, channelgroup=channelgroup))))
 
         channel_name = channelgroup
         if channel_name == "All_Channels":
-            channel_name = _("All Channels")
+            channel_name = get_string("All Channels")
         items.append({
             'label': channel_name,
             'path': plugin_url_for(plugin, group, channelgroup=channelgroup),
@@ -2530,7 +2530,7 @@ def service_thread():
 
 @plugin.route('/delete_recording/<label>/<path>')
 def delete_recording(label, path):
-    if not (xbmcgui.Dialog().yesno("IPTV Recorder", "[COLOR red]" + _("Delete Recording?") + "[/COLOR]\n" + label)):
+    if not (xbmcgui.Dialog().yesno("IPTV Recorder", "[COLOR red]" + get_string("Delete Recording?") + "[/COLOR]\n" + label)):
         return
     if not xbmcvfs.delete(path):
         return
@@ -2541,7 +2541,7 @@ def delete_recording(label, path):
 
 @plugin.route('/delete_all_recordings')
 def delete_all_recordings():
-    result = xbmcgui.Dialog().yesno("IPTV Recorder", "[COLOR red]" + _("Delete All Recordings?") + "[/COLOR]")
+    result = xbmcgui.Dialog().yesno("IPTV Recorder", "[COLOR red]" + get_string("Delete All Recordings?") + "[/COLOR]")
     if not result:
         return
 
@@ -2625,11 +2625,11 @@ def recordings():
 
         context_items = []
 
-        context_items.append((_("Delete Recording"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_recording, label=label, path=path))))
-        context_items.append((_("Delete All Recordings"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_recordings))))
+        context_items.append((get_string("Delete Recording"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_recording, label=label, path=path))))
+        context_items.append((get_string("Delete All Recordings"), 'RunPlugin(%s)' % (plugin_url_for(plugin, delete_all_recordings))))
         if plugin.get_setting('external.player', str):
-            context_items.append((_("External Player"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_external, path=path))))
-        #context_items.append((_("Convert to mp4"), 'RunPlugin(%s)' % (plugin_url_for(plugin, convert, path=path))))
+            context_items.append((get_string("External Player"), 'RunPlugin(%s)' % (plugin_url_for(plugin, play_external, path=path))))
+        #context_items.append((get_string("Convert to mp4"), 'RunPlugin(%s)' % (plugin_url_for(plugin, convert, path=path))))
 
         items.append({
             'thumbnail': thumbnail,
@@ -2701,7 +2701,7 @@ def xmltv():
     load_channels = {}
 
     dialog = xbmcgui.DialogProgressBG()
-    dialog.create("IPTV Recorder", _("Loading data..."))
+    dialog.create("IPTV Recorder", get_string("Loading data..."))
 
     profilePath = xbmc.translatePath(plugin.addon.getAddonInfo('profile'))
     xbmcvfs.mkdirs(profilePath)
@@ -2728,8 +2728,7 @@ def xmltv():
     shifts = {}
 
     for x in ["1","2"]:
-
-        dialog.update(0, message=_("Finding streams"))
+        dialog.update(0, message=get_string("Finding streams"))
         mode = plugin.get_setting('external.m3u.'+x, str)
         if mode == "0":
             if x == "1":
@@ -2821,7 +2820,7 @@ def xmltv():
 
                 i += 1
                 percent = 0 + int(100.0 * i / total)
-                dialog.update(percent, message=_("Finding streams"))
+                dialog.update(percent, message=get_string("Finding streams"))
 
     for x in ["1","2"]:
 
@@ -2847,7 +2846,7 @@ def xmltv():
 
             tmp = os.path.join(profilePath, 'xmltv'+x+'.tmp')
             xml = os.path.join(profilePath, 'xmltv'+x+'.xml')
-            dialog.update(0, message=_("Copying xmltv file"))
+            dialog.update(0, message=get_string("Copying xmltv file"))
             xbmcvfs.copy(path, tmp)
 
             f = xbmcvfs.File(tmp, "rb")
@@ -2855,7 +2854,7 @@ def xmltv():
             f.close()
             magic = data_bytes[:3]
             if magic == "\x1f\x8b\x08":
-                dialog.update(0, message=_("Unzipping xmltv file"))
+                dialog.update(0, message=get_string("Unzipping xmltv file"))
                 compressedFile = StringIO()
                 compressedFile.write(data_bytes)
                 compressedFile.seek(0)
@@ -2876,7 +2875,7 @@ def xmltv():
 
             htmlparser = HTMLParser()
 
-            dialog.update(0, message=_("Finding channels"))
+            dialog.update(0, message=get_string("Finding channels"))
             match = re.findall('<channel(.*?)</channel>', data, flags=(re.I|re.DOTALL))
             if match:
                 total = len(match)
@@ -2900,7 +2899,7 @@ def xmltv():
 
                     i += 1
                     percent = 0 + int(100.0 * i / total)
-                    dialog.update(percent, message=_("Finding channels"))
+                    dialog.update(percent, message=get_string("Finding channels"))
 
     '''
     missing_streams = conn.execute('SELECT name, tvg_name FROM streams WHERE tvg_id IS null OR tvg_id IS ""').fetchall()
@@ -2960,7 +2959,7 @@ def xmltv():
 
             htmlparser = HTMLParser()
 
-            dialog.update(0, message=_("Finding programmes"))
+            dialog.update(0, message=get_string("Finding programmes"))
             match = re.findall('<programme(.*?)</programme>', data, flags=(re.I|re.DOTALL))
             if match:
                 total = len(match)
@@ -3066,12 +3065,12 @@ def xmltv():
 
                     i += 1
                     percent = 0 + int(100.0 * i / total)
-                    dialog.update(percent, message=_("Finding programmes"))
+                    dialog.update(percent, message=get_string("Finding programmes"))
 
     conn.commit()
     conn.close()
 
-    dialog.update(100, message=_("Finished loading data"))
+    dialog.update(100, message=get_string("Finished loading data"))
     time.sleep(1)
     dialog.close()
     return
@@ -3079,7 +3078,7 @@ def xmltv():
 
 @plugin.route('/nuke')
 def nuke():
-    if not (xbmcgui.Dialog().yesno("IPTV Recorder", _("Delete Everything and Start Again?"))):
+    if not (xbmcgui.Dialog().yesno("IPTV Recorder", get_string("Delete Everything and Start Again?"))):
         return
 
     xbmcvfs.delete(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')))
@@ -3094,7 +3093,7 @@ def search_index():
 
     items.append(
     {
-        'label': _("Search Title"),
+        'label': get_string("Search Title"),
         'path': plugin_url_for(plugin, 'search_title_dialog'),
         'thumbnail':get_icon_path('search'),
         'context_menu': context_items,
@@ -3102,7 +3101,7 @@ def search_index():
 
     items.append(
     {
-        'label': _("Search Plot"),
+        'label': get_string("Search Plot"),
         'path': plugin_url_for(plugin, 'search_plot_dialog'),
         'thumbnail':get_icon_path('search'),
         'context_menu': context_items,
@@ -3110,7 +3109,7 @@ def search_index():
 
     items.append(
     {
-        'label': _("Search Categories"),
+        'label': get_string("Search Categories"),
         'path': plugin_url_for(plugin, 'search_categories_dialog'),
         'thumbnail':get_icon_path('search'),
         'context_menu': context_items,
@@ -3126,7 +3125,7 @@ def browse_index():
 
     items.append(
     {
-        'label': _("TV Shows"),
+        'label': get_string("TV Shows"),
         'path': plugin_url_for(plugin, 'tv'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
@@ -3134,7 +3133,7 @@ def browse_index():
 
     items.append(
     {
-        'label': _("Movies"),
+        'label': get_string("Movies"),
         'path': plugin_url_for(plugin, 'movies'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
@@ -3142,7 +3141,7 @@ def browse_index():
 
     items.append(
     {
-        'label': _("Other"),
+        'label': get_string("Other"),
         'path': plugin_url_for(plugin, 'others'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
@@ -3150,7 +3149,7 @@ def browse_index():
 
     items.append(
     {
-        'label': _("Categories"),
+        'label': get_string("Categories"),
         'path': plugin_url_for(plugin, 'categories'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
@@ -3166,7 +3165,7 @@ def maintenance_index():
 
     items.append(
     {
-        'label': _("Jobs"),
+        'label': get_string("Jobs"),
         'path': plugin_url_for(plugin, 'jobs'),
         'thumbnail':get_icon_path('recordings'),
         'context_menu': context_items,
@@ -3174,7 +3173,7 @@ def maintenance_index():
 
     items.append(
     {
-        'label': _("Rules"),
+        'label': get_string("Rules"),
         'path': plugin_url_for(plugin, 'rules'),
         'thumbnail':get_icon_path('recordings'),
         'context_menu': context_items,
@@ -3183,7 +3182,7 @@ def maintenance_index():
     if plugin.get_setting('debug', str) == "true":
         items.append(
         {
-            'label': _("Service"),
+            'label': get_string("Service"),
             'path': plugin_url_for(plugin, 'service'),
             'thumbnail':get_icon_path('settings'),
             'context_menu': context_items,
@@ -3191,7 +3190,7 @@ def maintenance_index():
 
         items.append(
         {
-            'label': _("Reload Data"),
+            'label': get_string("Reload Data"),
             'path': plugin_url_for(plugin, 'xmltv'),
             'thumbnail':get_icon_path('settings'),
             'context_menu': context_items,
@@ -3199,7 +3198,7 @@ def maintenance_index():
 
         items.append(
         {
-            'label': _("NUKE"),
+            'label': get_string("NUKE"),
             'path': plugin_url_for(plugin, 'nuke'),
             'thumbnail':get_icon_path('settings'),
             'context_menu': context_items,
@@ -3207,7 +3206,7 @@ def maintenance_index():
         if xbmc.getCondVisibility('system.platform.android'):
             items.append(
             {
-                'label': _("Delete ffmpeg"),
+                'label': get_string("Delete ffmpeg"),
                 'path': plugin_url_for(plugin, 'delete_ffmpeg'),
                 'thumbnail':get_icon_path('settings'),
                 'context_menu': context_items,
@@ -3259,17 +3258,17 @@ def index():
 
     items.append(
     {
-        'label': _("Favourite Channels"),
+        'label': get_string("Favourite Channels"),
         'path': plugin_url_for(plugin, 'favourite_channels'),
         'thumbnail':get_icon_path('favourites'),
         'context_menu': context_items,
     })
 
     context_items = []
-    context_items.append((_("Select Groups To Load"), 'RunPlugin(%s)' % (plugin_url_for(plugin, select_groups))))
+    context_items.append((get_string("Select Groups To Load"), 'RunPlugin(%s)' % (plugin_url_for(plugin, select_groups))))
     items.append(
     {
-        'label': _("Channel Groups"),
+        'label': get_string("Channel Groups"),
         'path': plugin_url_for(plugin, 'groups'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
@@ -3279,7 +3278,7 @@ def index():
 
     items.append(
     {
-        'label': _("Recordings"),
+        'label': get_string("Recordings"),
         'path': plugin_url_for(plugin, 'recordings'),
         'thumbnail':get_icon_path('recordings'),
         'context_menu': context_items,
@@ -3287,7 +3286,7 @@ def index():
 
     items.append(
     {
-        'label': _("Recordings Folder"),
+        'label': get_string("Recordings Folder"),
         'path': plugin.get_setting('recordings', str),
         'thumbnail':get_icon_path('recordings'),
         'context_menu': context_items,
@@ -3295,7 +3294,7 @@ def index():
 
     items.append(
     {
-        'label': _("Browse"),
+        'label': get_string("Browse"),
         'path': plugin_url_for(plugin, 'browse_index'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
@@ -3303,7 +3302,7 @@ def index():
 
     items.append(
     {
-        'label': _("Search"),
+        'label': get_string("Search"),
         'path': plugin_url_for(plugin, 'search_index'),
         'thumbnail':get_icon_path('search'),
         'context_menu': context_items,
@@ -3311,7 +3310,7 @@ def index():
 
     items.append(
     {
-        'label': _("Maintenance"),
+        'label': get_string("Maintenance"),
         'path': plugin_url_for(plugin, 'maintenance_index'),
         'thumbnail':get_icon_path('settings'),
         'context_menu': context_items,
@@ -3319,7 +3318,7 @@ def index():
 
     items.append(
     {
-        'label': _("Full EPG"),
+        'label': get_string("Full EPG"),
         'path': plugin_url_for(plugin, 'epg'),
         'thumbnail':get_icon_path('folder'),
         'context_menu': context_items,
