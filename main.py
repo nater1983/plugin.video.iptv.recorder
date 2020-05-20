@@ -2706,26 +2706,10 @@ def xmltv():
     profilePath = xbmc.translatePath(plugin.addon.getAddonInfo('profile'))
     xbmcvfs.mkdirs(profilePath)
 
-    dialog.update(0, message=_("Creating database"))
-    databasePath = os.path.join(profilePath, 'xmltv.db')
-    conn = sqlite3.connect(databasePath, detect_types=sqlite3.PARSE_DECLTYPES)
-    conn.execute('PRAGMA foreign_keys = ON')
-    conn.row_factory = sqlite3.Row
-    conn.execute('DROP TABLE IF EXISTS programmes')
-    conn.execute('DROP TABLE IF EXISTS channels')
-    conn.execute('DROP TABLE IF EXISTS streams')
-    conn.execute('CREATE TABLE IF NOT EXISTS channels(uid INTEGER PRIMARY KEY ASC, id TEXT, name TEXT, icon TEXT)')
-    conn.execute('CREATE TABLE IF NOT EXISTS programmes(uid INTEGER PRIMARY KEY ASC, channelid TEXT, title TEXT, sub_title TEXT, start TIMESTAMP, stop TIMESTAMP, date TEXT, description TEXT, episode TEXT, categories TEXT, xml TEXT)')
-    #TODO unique fails with timestamps: UNIQUE(channelid, channelname, start, stop, description, type)
-    conn.execute('CREATE TABLE IF NOT EXISTS rules(uid INTEGER PRIMARY KEY ASC, channelid TEXT, channelname TEXT, title TEXT, sub_title TEXT, start TIMESTAMP, stop TIMESTAMP, date TEXT, description TEXT, episode TEXT, categories TEXT, type TEXT, name TEXT)')
-    try: conn.execute('ALTER TABLE rules ADD COLUMN name TEXT')
-    except: pass
-    #TODO check primary key
-    conn.execute('CREATE TABLE IF NOT EXISTS streams(uid INTEGER PRIMARY KEY ASC, name TEXT, tvg_name TEXT, tvg_id TEXT, tvg_logo TEXT, groups TEXT, url TEXT, tv_number INTEGER)')
-    conn.execute('CREATE TABLE IF NOT EXISTS favourites(channelname TEXT, channelid TEXT, logo TEXT, PRIMARY KEY(channelname))')
-    conn.execute('CREATE TABLE IF NOT EXISTS jobs(uid INTEGER PRIMARY KEY ASC, uuid TEXT, channelid TEXT, channelname TEXT, title TEXT, start TIMESTAMP, stop TIMESTAMP, type TEXT)')
-
     shifts = {}
+    streams_to_insert = []
+    channels_to_insert = []
+    programmes_to_insert = []
 
     for x in ["1","2"]:
         dialog.update(0, message=get_string("Finding streams"))
@@ -2815,8 +2799,7 @@ def xmltv():
                 if groups:
                     groups = groups.group(1) or None
 
-                conn.execute("INSERT OR IGNORE INTO streams(name, tvg_name, tvg_id, tvg_logo, groups, url, tv_number) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [name, tvg_name, tvg_id, tvg_logo, groups, url.strip(), i])
+                streams_to_insert.append((name, tvg_name, tvg_id, tvg_logo, groups, url.strip(), i))
 
                 i += 1
                 percent = 0 + int(100.0 * i / total)
@@ -2895,7 +2878,7 @@ def xmltv():
                     if icon:
                         icon = icon.group(1)
 
-                    conn.execute("INSERT OR IGNORE INTO channels(id, name, icon) VALUES (?, ?, ?)", [id, name, icon])
+                    channels_to_insert.append((id, name, icon))
 
                     i += 1
                     percent = 0 + int(100.0 * i / total)
@@ -2921,8 +2904,7 @@ def xmltv():
     else:
         load_all = False
 
-    channels = conn.execute("SELECT tvg_id, groups FROM streams").fetchall()
-    for tvg_id, groups in channels:
+    for _, _, tvg_id, _, groups, _, _ in streams_to_insert:
         if groups in load_groups:
             load_channels[tvg_id] = ""
 
@@ -3060,13 +3042,39 @@ def xmltv():
                         SE = "MOVIE"
                     episode = SE
 
-                    conn.execute("INSERT OR IGNORE INTO programmes(channelid, title, sub_title, start, stop, date, description, episode, categories, xml) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [channel, title, sub_title, start, stop, date, description, episode, categories, xml])
+                    programmes_to_insert.append((channel, title, sub_title, start, stop, date, description, episode, categories, xml))
 
                     i += 1
                     percent = 0 + int(100.0 * i / total)
                     dialog.update(percent, message=get_string("Finding programmes"))
 
+    dialog.update(0, message=get_string("Creating database"))
+    databasePath = os.path.join(profilePath, 'xmltv.db')
+    conn = sqlite3.connect(databasePath, detect_types=sqlite3.PARSE_DECLTYPES)
+    conn.execute('PRAGMA foreign_keys = ON')
+    conn.row_factory = sqlite3.Row
+    conn.execute('DROP TABLE IF EXISTS programmes')
+    conn.execute('DROP TABLE IF EXISTS channels')
+    conn.execute('DROP TABLE IF EXISTS streams')
+    conn.execute('CREATE TABLE IF NOT EXISTS channels(uid INTEGER PRIMARY KEY ASC, id TEXT, name TEXT, icon TEXT)')
+    conn.execute('CREATE TABLE IF NOT EXISTS programmes(uid INTEGER PRIMARY KEY ASC, channelid TEXT, title TEXT, sub_title TEXT, start TIMESTAMP, stop TIMESTAMP, date TEXT, description TEXT, episode TEXT, categories TEXT, xml TEXT)')
+    #TODO unique fails with timestamps: UNIQUE(channelid, channelname, start, stop, description, type)
+    conn.execute('CREATE TABLE IF NOT EXISTS rules(uid INTEGER PRIMARY KEY ASC, channelid TEXT, channelname TEXT, title TEXT, sub_title TEXT, start TIMESTAMP, stop TIMESTAMP, date TEXT, description TEXT, episode TEXT, categories TEXT, type TEXT, name TEXT)')
+    try: conn.execute('ALTER TABLE rules ADD COLUMN name TEXT')
+    except: pass
+    #TODO check primary key
+    conn.execute('CREATE TABLE IF NOT EXISTS streams(uid INTEGER PRIMARY KEY ASC, name TEXT, tvg_name TEXT, tvg_id TEXT, tvg_logo TEXT, groups TEXT, url TEXT, tv_number INTEGER)')
+    conn.execute('CREATE TABLE IF NOT EXISTS favourites(channelname TEXT, channelid TEXT, logo TEXT, PRIMARY KEY(channelname))')
+    conn.execute('CREATE TABLE IF NOT EXISTS jobs(uid INTEGER PRIMARY KEY ASC, uuid TEXT, channelid TEXT, channelname TEXT, title TEXT, start TIMESTAMP, stop TIMESTAMP, type TEXT)')
+
+    dialog.update(0, message=get_string("Updating database"))
+    conn.executemany("INSERT OR IGNORE INTO streams(name, tvg_name, tvg_id, tvg_logo, groups, url, tv_number) VALUES (?, ?, ?, ?, ?, ?, ?)", streams_to_insert)
+
+    dialog.update(33, message=get_string("Updating database"))
+    conn.executemany("INSERT OR IGNORE INTO channels(id, name, icon) VALUES (?, ?, ?)", channels_to_insert)
+
+    dialog.update(66, message=get_string("Updating database"))
+    conn.executemany("INSERT OR IGNORE INTO programmes(channelid, title, sub_title, start, stop, date, description, episode, categories, xml) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", programmes_to_insert)
     conn.commit()
     conn.close()
 

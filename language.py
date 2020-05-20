@@ -164,3 +164,4 @@ __strings['number of hours to record'] = 30093
 __strings['rule name'] = 30094
 __strings['start date'] = 30095
 __strings['stop time'] = 30096
+__strings['updating database'] = 30097

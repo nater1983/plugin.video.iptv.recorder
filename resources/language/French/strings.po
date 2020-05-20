@@ -389,3 +389,7 @@ msgstr "Date de début"
 msgctxt "#30096"
 msgid "Stop Time"
 msgstr "Date de fin"
+
+msgctxt "#30097"
+msgid "Updating database"
+msgstr "Mise à jour de la base de données"

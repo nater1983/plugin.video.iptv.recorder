@@ -389,3 +389,7 @@ msgstr ""
 msgctxt "#30096"
 msgid "Stop Time"
 msgstr ""
+
+msgctxt "#30097"
+msgid "Updating database"
+msgstr ""
