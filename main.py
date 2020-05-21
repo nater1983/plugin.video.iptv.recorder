@@ -2805,6 +2805,7 @@ def xmltv():
                 percent = 0 + int(100.0 * i / total)
                 dialog.update(percent, message=get_string("Finding streams"))
 
+    xml_filename_to_file_content = {}
     for x in ["1","2"]:
 
         mode = plugin.get_setting('external.xmltv.'+x, str)
@@ -2826,35 +2827,28 @@ def xmltv():
             path = plugin.get_setting('external.xmltv.url.'+x, str)
 
         if path:
-
-            tmp = os.path.join(profilePath, 'xmltv'+x+'.tmp')
             xml = os.path.join(profilePath, 'xmltv'+x+'.xml')
             dialog.update(0, message=get_string("Copying xmltv file"))
-            xbmcvfs.copy(path, tmp)
+            xbmcvfs.copy(path, xml)
 
-            f = xbmcvfs.File(tmp, "rb")
+            f = xbmcvfs.File(xml, "rb")
             data_bytes = bytes(f.readBytes())
             f.close()
             magic = data_bytes[:3]
             if magic == "\x1f\x8b\x08":
+                tmp = os.path.join(profilePath, 'xmltv'+x+'.gz')
+                xbmcvfs.delete(tmp)
+                xbmcvfs.rename(xml, tmp) #Not really useful but it can help for debuging
                 dialog.update(0, message=get_string("Unzipping xmltv file"))
                 compressedFile = StringIO()
                 compressedFile.write(data_bytes)
                 compressedFile.seek(0)
                 decompressedFile = gzip.GzipFile(fileobj=compressedFile, mode='rb')
                 data_bytes = decompressedFile.read()
-                f = xbmcvfs.File(xml, "wb")
-                f.write(bytearray(data_bytes))
-                f.close()
-            else:
-                xbmcvfs.copy(tmp, xml)
-
-            f = xbmcvfs.File(xml, 'rb')
-            data_bytes = bytes(f.readBytes())
-            f.close()
 
             encoding = find_xml_bytes_encoding(data_bytes)
             data = data_bytes.decode(encoding)
+            xml_filename_to_file_content[xml] = data
 
             htmlparser = HTMLParser()
 
@@ -2863,22 +2857,24 @@ def xmltv():
             if match:
                 total = len(match)
                 i = 0
+                match_pattern = re.compile('(id="(.*?)")|(<display-name.*?>(.*?)</display-name)|(<icon.*?src="(.*?)")')
+
                 for m in match:
-                    id = re.search('id="(.*?)"', m)
-                    if id:
-                        id = htmlparser.unescape(id.group(1))
-
+                    data_found = match_pattern.findall(m)
+                    id = None
                     name = None
-                    names = re.findall('<display-name.*?>(.*?)</display-name', m)
-                    if names:
-                        for name in reversed(names): #First only
-                            name = htmlparser.unescape(name)
+                    icon = None
+                    if data_found:
+                        for current_data_found in data_found:
+                            if current_data_found[1]:
+                                id = htmlparser.unescape(current_data_found[1])
+                            elif current_data_found[3]:
+                                name = htmlparser.unescape(current_data_found[3])
+                            elif current_data_found[5]:
+                                icon = current_data_found[5]
 
-                    icon = re.search('<icon.*?src="(.*?)"', m)
-                    if icon:
-                        icon = icon.group(1)
-
-                    channels_to_insert.append((id, name, icon))
+                    if id and name:
+                        channels_to_insert.append((id, name, icon))
 
                     i += 1
                     percent = 0 + int(100.0 * i / total)
@@ -2932,12 +2928,7 @@ def xmltv():
 
             xml = os.path.join(profilePath, 'xmltv'+x+'.xml')
 
-            f = xbmcvfs.File(xml, 'rb')
-            data_bytes = bytes(f.readBytes())
-            f.close()
-
-            encoding = find_xml_bytes_encoding(data_bytes)
-            data = data_bytes.decode(encoding)
+            data = xml_filename_to_file_content.get(xml)
 
             htmlparser = HTMLParser()
 
