@@ -393,3 +393,7 @@ msgstr "Date de fin"
 msgctxt "#30097"
 msgid "Updating database"
 msgstr "Mise à jour de la base de données"
+
+msgctxt "#30098"
+msgid "Database not found"
+msgstr "Base de données non trouvée, veuillez réessayer dans quelques secondes ..."

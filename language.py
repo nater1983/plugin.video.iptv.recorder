@@ -165,3 +165,4 @@ __strings['rule name'] = 30094
 __strings['start date'] = 30095
 __strings['stop time'] = 30096
 __strings['updating database'] = 30097
+__strings['database not found'] = 30098

@@ -127,10 +127,19 @@ def find(path):
             all_files.append(new_file)
     return all_dirs, all_files
 
+def check_has_db_filled_show_error_message_ifn(db_cursor):
+    table_found = db_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='streams'").fetchone()
+    if not table_found:
+        xbmcgui.Dialog().notification("IPTV Recorder", get_string("Database not found"))
+        return False
+    return True
+
 @plugin.route('/play_channel/<channelname>')
 def play_channel(channelname):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')))
     c = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(c):
+        return
 
     channel = c.execute("SELECT url FROM streams WHERE name=?", (channelname, )).fetchone()
 
@@ -145,6 +154,8 @@ def play_channel(channelname):
 def play_channel_external(channelname):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')))
     c = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(c):
+        return
 
     channel = c.execute("SELECT url FROM streams WHERE name=?", (channelname, )).fetchone()
     if not channel:
@@ -200,11 +211,12 @@ def str2dt(string_date):
 def total_seconds(td):
     return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
 
-
 @plugin.route('/jobs')
 def jobs():
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     jobs = cursor.execute("SELECT * FROM jobs ORDER by channelname, start").fetchall()
 
@@ -248,6 +260,8 @@ def jobs():
 def rules():
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rules = cursor.execute('SELECT uid, channelid, channelname, title, start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", description, type, name FROM rules ORDER by channelname, title, start, stop').fetchall()
 
@@ -355,6 +369,8 @@ def delete_all_jobs(ask=True):
 def delete_job(job, kill=True, ask=True):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     job_details = cursor.execute("SELECT uuid FROM jobs WHERE uuid=?", (job, )).fetchone()
     if not job_details:
@@ -556,6 +572,8 @@ def record_once_thread(programmeid, do_refresh=True, watch=False, remind=False, 
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programme_from_database = None
     if programmeid:
@@ -908,6 +926,8 @@ def renew_jobs():
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     try:
         jobs = cursor.execute("SELECT * FROM jobs").fetchall()
@@ -1010,6 +1030,8 @@ def record_daily_time(channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     channelid = None
 
@@ -1056,6 +1078,8 @@ def record_weekly_time(channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     channelid = None
 
@@ -1081,6 +1105,8 @@ def record_daily(channelid, channelname, title, start, stop):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     #TODO problem with PRIMARY KEYS, UNIQUE and TIMESTAMP
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND start=? AND stop =? AND type=?', (channelid, channelname, title, start, stop, "DAILY")).fetchone()
@@ -1104,6 +1130,8 @@ def record_weekly(channelid, channelname, title, start, stop):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     #TODO problem with PRIMARY KEYS, UNIQUE and TIMESTAMP
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND start=? AND stop =? AND type=?', (channelid, channelname, title, start, stop, "WEEKLY")).fetchone()
@@ -1124,6 +1152,8 @@ def record_always(channelid, channelname, title):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND type=?', (channelid, channelname, title, "ALWAYS")).fetchone()
 
@@ -1145,6 +1175,8 @@ def record_always_search(channelid, channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND type=?', (channelid, channelname, title, "SEARCH")).fetchone()
 
@@ -1166,6 +1198,8 @@ def record_always_search_plot(channelid, channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND description=? AND type=?', (channelid, channelname, description, "PLOT")).fetchone()
 
@@ -1188,6 +1222,8 @@ def watch_daily(channelid, channelname, title, start, stop):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     #TODO problem with PRIMARY KEYS, UNIQUE and TIMESTAMP
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND start=? AND stop =? AND type=?', (channelid, channelname, title, start, stop, "WATCH DAILY")).fetchone()
@@ -1211,6 +1247,8 @@ def watch_weekly(channelid, channelname, title, start, stop):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     #TODO problem with PRIMARY KEYS, UNIQUE and TIMESTAMP
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND start=? AND stop =? AND type=?', (channelid, channelname, title, start, stop, "WATCH WEEKLY")).fetchone()
@@ -1231,6 +1269,8 @@ def watch_always(channelid, channelname, title):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND type=?', (channelid, channelname, title, "WATCH ALWAYS")).fetchone()
 
@@ -1252,6 +1292,8 @@ def watch_always_search(channelid, channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND type=?', (channelid, channelname, title, "WATCH SEARCH")).fetchone()
 
@@ -1273,6 +1315,8 @@ def watch_always_search_plot(channelid, channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND description=? AND type=?', (channelid, channelname, description, "WATCH PLOT")).fetchone()
 
@@ -1295,6 +1339,8 @@ def remind_daily(channelid, channelname, title, start, stop):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     #TODO problem with PRIMARY KEYS, UNIQUE and TIMESTAMP
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND start=? AND stop =? AND type=?', (channelid, channelname, title, start, stop, "REMIND DAILY")).fetchone()
@@ -1318,6 +1364,8 @@ def remind_weekly(channelid, channelname, title, start, stop):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     #TODO problem with PRIMARY KEYS, UNIQUE and TIMESTAMP
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND start=? AND stop =? AND type=?', (channelid, channelname, title, start, stop, "REMIND WEEKLY")).fetchone()
@@ -1338,6 +1386,8 @@ def remind_always(channelid, channelname, title):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND type=?', (channelid, channelname, title, "REMIND ALWAYS")).fetchone()
 
@@ -1359,6 +1409,8 @@ def remind_always_search(channelid, channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND title=? AND type=?', (channelid, channelname, title, "REMIND SEARCH")).fetchone()
 
@@ -1380,6 +1432,8 @@ def remind_always_search_plot(channelid, channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rule = cursor.execute('SELECT * FROM rules WHERE channelid=? AND channelname=? AND description=? AND type=?', (channelid, channelname, description, "REMIND PLOT")).fetchone()
 
@@ -1398,6 +1452,8 @@ def broadcast(programmeid, channelname):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programme = cursor.execute('SELECT channelid, title, start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", episode FROM programmes WHERE uid=? LIMIT 1', (programmeid, )).fetchone()
     channelid, title, start, stop, episode = programme
@@ -1641,6 +1697,8 @@ def search_title(title):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programmes = cursor.execute(
     'SELECT uid, channelid , title , sub_title , start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date , description , episode, categories FROM programmes WHERE title LIKE ? ORDER BY start, stop, channelid',
@@ -1701,6 +1759,8 @@ def search_plot(plot):
     #TODO combine with search_title() and group()
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programmes = cursor.execute(
     'SELECT uid, channelid , title , sub_title , start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date , description , episode, categories FROM programmes WHERE description LIKE ? ORDER BY start, stop, channelid',
@@ -1747,6 +1807,8 @@ def search_categories_dialog():
 def search_categories_input(categories):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programmes = cursor.execute('SELECT DISTINCT categories FROM programmes').fetchall()
 
@@ -1782,6 +1844,8 @@ def search_categories(categories):
     #TODO combine with search_title() and group()
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programmes = cursor.execute(
     'SELECT uid, channelid , title , sub_title , start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date , description , episode, categories FROM programmes WHERE categories LIKE ? ORDER BY start, stop, channelid',
@@ -1797,6 +1861,8 @@ def search_categories(categories):
 def channel(channelid,channelname):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     thumbnail = cursor.execute("SELECT tvg_logo FROM streams WHERE tvg_id=?", (channelid, )).fetchone()
     if not thumbnail:
@@ -1822,6 +1888,8 @@ def channel(channelid,channelname):
 def tv_show(title):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programmes = cursor.execute(
     'SELECT uid, channelid , title , sub_title , start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date , description , episode, categories FROM programmes WHERE title=? ORDER BY start, channelid, title', (title, )).fetchall()
@@ -1836,6 +1904,8 @@ def tv_show(title):
 def other(title):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programmes = cursor.execute(
     'SELECT uid, channelid , title , sub_title , start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date , description , episode, categories FROM programmes WHERE episode IS null AND title=? ORDER BY start, channelid, title', (title, )).fetchall()
@@ -1850,6 +1920,8 @@ def other(title):
 def category(title):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     programmes = cursor.execute(
     'SELECT uid, channelid , title , sub_title , start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", date , description , episode, categories FROM programmes WHERE categories LIKE ? ORDER BY start, channelid, title', ("%"+title+"%", )).fetchall()
@@ -1864,6 +1936,8 @@ def category(title):
 def movie(title, date):
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     if date != "None":
         programmes = cursor.execute(
@@ -1884,6 +1958,8 @@ def listing(programmes, scroll=False, channelname=None):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     streams = cursor.execute("SELECT uid, name, tvg_name, tvg_id, tvg_logo, groups, url FROM streams").fetchall()
     #streams = {x[3]:x for x in streams}
@@ -2099,6 +2175,8 @@ def group(channelgroup=None,section=None):
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     order_settings = plugin.get_setting('sort.channels.v2', str)
     if order_settings == '1':
@@ -2269,6 +2347,8 @@ def groups():
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     channelgroups = cursor.execute("SELECT DISTINCT groups FROM streams ORDER BY groups").fetchall()
 
@@ -2303,6 +2383,8 @@ def tv():
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     titles = cursor.execute('SELECT DISTINCT title FROM programmes WHERE episode IS NOT null AND episode IS NOT "MOVIE" AND start>? ORDER BY title', (datetime.utcnow(), )).fetchall()
 
@@ -2323,6 +2405,8 @@ def movies():
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     titles = cursor.execute('SELECT DISTINCT title, date FROM programmes WHERE episode IS "MOVIE" AND start>? ORDER BY title', (datetime.utcnow(), )).fetchall()
 
@@ -2349,6 +2433,8 @@ def others():
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     titles = cursor.execute('SELECT DISTINCT title,episode FROM programmes WHERE episode IS null AND start>? ORDER BY title', (datetime.utcnow(), )).fetchall()
 
@@ -2372,7 +2458,8 @@ def categories():
 
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
-
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     titles = cursor.execute('SELECT DISTINCT categories FROM programmes WHERE start>? ORDER BY categories', (datetime.utcnow(), )).fetchall()
 
@@ -2416,6 +2503,8 @@ def full_service():
 def service_thread():
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
 
     rules = cursor.execute('SELECT uid, channelid, channelname, title, start AS "start [TIMESTAMP]", stop AS "stop [TIMESTAMP]", description, type, name FROM rules ORDER by channelname, title, start, stop').fetchall()
 
@@ -3215,11 +3304,13 @@ def maintenance_index():
 
 @plugin.route('/select_groups')
 def select_groups():
-    load_groups = plugin.get_storage('load_groups')
-    load_groups.clear()
-
     conn = sqlite3.connect(xbmc.translatePath('%sxmltv.db' % plugin.addon.getAddonInfo('profile')), detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cursor = conn.cursor()
+    if not check_has_db_filled_show_error_message_ifn(cursor):
+        return
+
+    load_groups = plugin.get_storage('load_groups')
+    load_groups.clear()
 
     channelgroups = cursor.execute("SELECT DISTINCT groups FROM streams ORDER BY groups").fetchall()
     channelgroups = [x[0] for x in channelgroups]
