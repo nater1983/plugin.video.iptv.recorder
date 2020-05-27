@@ -38,8 +38,7 @@ if __name__ == '__main__':
             monitor = xbmc.Monitor()
             xbmc.log("[plugin.video.iptv.recorder] service started...")
 
-            if ADDON.getSetting('service.startup') == 'true':
-                time.sleep(int(ADDON.getSetting('service.delay.seconds')))
+            if ADDON.getSetting('service.startup') == 'true' and not monitor.waitForAbort(int(ADDON.getSetting('service.delay.seconds'))):
                 Service()
                 ADDON.setSetting('last.update', str(time.time()))
 
