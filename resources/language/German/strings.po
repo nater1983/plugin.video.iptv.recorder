@@ -389,3 +389,11 @@ msgstr "Start Date"
 msgctxt "#30096"
 msgid "Stop Time"
 msgstr "Stop Time"
+
+msgctxt "#30097"
+msgid "Updating database"
+msgstr "Updating database"
+
+msgctxt "#30098"
+msgid "Database not found"
+msgstr "Database not found, please retry after few seconds ..."

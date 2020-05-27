@@ -14,7 +14,7 @@ if __name__ == "__main__":
         import subprocess
 
         strings = []
-        regex_to_found = re.compile("_\([\"'](.*?)[\"']\)", re.IGNORECASE)
+        regex_to_found = re.compile("get_string\([\"'](.*?)[\"']\)", re.IGNORECASE)
         for root, dirs, files in os.walk("."):
             for file in files:
                 if file.endswith(".py"):
@@ -164,3 +164,5 @@ __strings['number of hours to record'] = 30093
 __strings['rule name'] = 30094
 __strings['start date'] = 30095
 __strings['stop time'] = 30096
+__strings['updating database'] = 30097
+__strings['database not found'] = 30098
