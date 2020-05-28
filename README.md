@@ -7,7 +7,7 @@ Adding recording from the IPTV Simple Client is possible and has been done but i
 
 This addon is an easily extensible python addon that should work with any device.
 
-You will need a version of ffmpeg for your device. 
+You will need a version of ffmpeg for your device.
 
 https://ffmpeg.org/
 
@@ -17,8 +17,9 @@ On Android this addon will copy ffmpeg to the /data/data folder so it can run.
 
 ### Quick Start
 
-* Install this addon via my repo. 
-https://github.com/primaeval/repository.primaeval/raw/master/zips/repository.primaeval/repository.primaeval-0.0.2.zip
+* Install this addon downloading one of the following zip file :
+    * For Kodi Leia : https://github.com/Dobi-Dev/plugin.video.iptv.recorder/releases/download/v0.2.0/plugin.video.iptv.recorder-leia.zip
+    * For Kodi Matrix : https://github.com/Dobi-Dev/plugin.video.iptv.recorder/releases/download/v0.2.0/plugin.video.iptv.recorder-matrix.zip
 * Download ffmpeg for your device
 * Point to the ffmpeg exe in Settings.
 * Make sure IPTV Simple Client is enabled and works or point to your xmltv/m3u in Settings\Data.
